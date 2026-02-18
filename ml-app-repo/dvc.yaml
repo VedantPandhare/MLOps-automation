@@ -1,0 +1,34 @@
+stages:
+  prepare-data:
+    cmd: python src/train.py --prepare-only
+    deps:
+      - src/train.py
+    outs:
+      - data/fraud_dataset.csv
+
+  train:
+    cmd: python src/train.py
+    deps:
+      - src/train.py
+      - data/fraud_dataset.csv
+    params:
+      - params.yaml:
+          - n_estimators
+          - max_depth
+          - min_samples_split
+          - test_size
+    outs:
+      - models/fraud_model.pkl
+      - models/scaler.pkl
+    metrics:
+      - metrics.json:
+          cache: false
+
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+      - src/evaluate.py
+      - models/fraud_model.pkl
+    outs:
+      - eval_result.json:
+          cache: false

@@ -1,0 +1,112 @@
+name: Reusable - Slack Notification
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        description: "Pipeline status (success, failure, cancelled)"
+        required: true
+        type: string
+      pipeline-name:
+        description: "Name of the pipeline that ran"
+        required: true
+        type: string
+      environment:
+        description: "Deployment environment"
+        required: false
+        type: string
+        default: "N/A"
+      image-tag:
+        description: "Docker image tag deployed"
+        required: false
+        type: string
+        default: "N/A"
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
+
+jobs:
+  notify:
+    name: Send Slack Notification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set Status Emoji
+        id: emoji
+        run: |
+          if [ "${{ inputs.status }}" == "success" ]; then
+            echo "icon=✅" >> $GITHUB_OUTPUT
+            echo "color=#36a64f" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.status }}" == "failure" ]; then
+            echo "icon=❌" >> $GITHUB_OUTPUT
+            echo "color=#ff0000" >> $GITHUB_OUTPUT
+          else
+            echo "icon=⚠️" >> $GITHUB_OUTPUT
+            echo "color=#ffa500" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack Notification
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "${{ steps.emoji.outputs.color }}",
+                  "blocks": [
+                    {
+                      "type": "header",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "${{ steps.emoji.outputs.icon }} MLOps Pipeline: ${{ inputs.pipeline-name }}"
+                      }
+                    },
+                    {
+                      "type": "section",
+                      "fields": [
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Status:*\n${{ inputs.status }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Environment:*\n${{ inputs.environment }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Branch:*\n${{ github.ref_name }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Image Tag:*\n${{ inputs.image-tag }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Triggered By:*\n${{ github.actor }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "actions",
+                      "elements": [
+                        {
+                          "type": "button",
+                          "text": {
+                            "type": "plain_text",
+                            "text": "View Pipeline Run"
+                          },
+                          "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

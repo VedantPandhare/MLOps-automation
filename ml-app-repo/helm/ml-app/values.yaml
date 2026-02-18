@@ -1,0 +1,27 @@
+# Default values for the Fraud Detection ML App
+# Override with values-staging.yaml or values-production.yaml
+
+replicaCount: 2
+environment: development
+
+image:
+  repository: yourdockerhubusername/fraud-detection
+  tag: latest
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+service:
+  type: ClusterIP
+  port: 80

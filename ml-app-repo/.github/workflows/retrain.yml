@@ -1,0 +1,234 @@
+##############################################################################
+# Automated Model Retraining Pipeline
+#
+# Runs on a cron schedule every Sunday at 2 AM UTC.
+# Can also be triggered manually via workflow_dispatch.
+#
+# Flow:
+#   1. Pull latest data via DVC
+#   2. Train new model (tracked in MLflow)
+#   3. Compare new model vs current production model
+#   4. If new model is better → register it and trigger deployment
+##############################################################################
+
+name: Model Retraining Pipeline
+
+on:
+  schedule:
+    # Every Sunday at 2:00 AM UTC
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+    inputs:
+      force-promote:
+        description: "Force promote new model even if not better"
+        required: false
+        default: "false"
+        type: boolean
+      promotion-threshold:
+        description: "Minimum F1 improvement to promote (default: 0.02)"
+        required: false
+        default: "0.02"
+        type: string
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
+  HELM_RELEASE: fraud-detection
+
+jobs:
+  # ─── Step 1: Pull Latest Data ─────────────────────────────────────────────
+  pull-data:
+    name: 📦 Pull Latest Data (DVC)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install DVC
+        run: pip install dvc dvc-gs
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Pull Data with DVC
+        env:
+          DVC_CREDENTIALS: ${{ secrets.DVC_CREDENTIALS }}
+        run: |
+          echo "Pulling latest dataset from GCS via DVC..."
+          dvc pull data/
+          echo "Data pulled successfully."
+          ls -lh data/
+
+      - name: Upload Data Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-data
+          path: data/
+          retention-days: 1
+
+  # ─── Step 2: Train New Model ──────────────────────────────────────────────
+  train:
+    name: 🤖 Train New Model
+    needs: pull-data
+    runs-on: ubuntu-latest
+    outputs:
+      run-id: ${{ steps.train.outputs.run_id }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download Training Data
+        uses: actions/download-artifact@v4
+        with:
+          name: training-data
+          path: data/
+
+      - name: Train Model
+        id: train
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          PROMOTION_THRESHOLD: ${{ inputs.promotion-threshold || '0.02' }}
+        run: |
+          echo "Starting model training..."
+          python -c "
+          from src.train import run_training
+          metrics, run_id = run_training()
+          print(f'run_id={run_id}')
+          " | tee train_output.txt
+          RUN_ID=$(grep "run_id=" train_output.txt | cut -d= -f2)
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "MLflow Run ID: $RUN_ID"
+
+      - name: Upload Model Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: models/
+          retention-days: 7
+
+  # ─── Step 3: Evaluate — Compare vs Production ─────────────────────────────
+  evaluate:
+    name: 📊 Evaluate vs Production
+    needs: train
+    runs-on: ubuntu-latest
+    outputs:
+      should-promote: ${{ steps.evaluate.outputs.should_promote }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Evaluate Model
+        id: evaluate
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          MLFLOW_RUN_ID: ${{ needs.train.outputs.run-id }}
+          PROMOTION_THRESHOLD: ${{ inputs.promotion-threshold || '0.02' }}
+          EVAL_OUTPUT_PATH: eval_result.json
+        run: |
+          python src/evaluate.py ${{ needs.train.outputs.run-id }}
+          SHOULD_PROMOTE=$(python -c "import json; r=json.load(open('eval_result.json')); print(str(r['should_promote']).lower())")
+          echo "should_promote=$SHOULD_PROMOTE" >> $GITHUB_OUTPUT
+          echo "Promotion decision: $SHOULD_PROMOTE"
+          cat eval_result.json
+
+      - name: Override if Force Promote
+        if: inputs.force-promote == 'true'
+        run: echo "Force promote enabled — skipping threshold check."
+
+      - name: Upload Evaluation Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: eval_result.json
+
+  # ─── Step 4: Register & Promote Model ─────────────────────────────────────
+  register-model:
+    name: 📝 Register Model in MLflow
+    needs: evaluate
+    if: needs.evaluate.outputs.should-promote == 'true' || inputs.force-promote == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Register and Promote Model
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          MLFLOW_RUN_ID: ${{ needs.train.outputs.run-id }}
+        run: |
+          python src/register_model.py ${{ needs.train.outputs.run-id }}
+
+  # ─── Step 5: Build New Docker Image ───────────────────────────────────────
+  docker-build:
+    name: 🐳 Build New Image
+    needs: register-model
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/docker-build.yml@main
+    with:
+      image-name: ${{ env.IMAGE_NAME }}
+      registry: dockerhub
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  # ─── Step 6: Deploy Updated Model ─────────────────────────────────────────
+  deploy-production:
+    name: 🚀 Deploy Retrained Model
+    needs: docker-build
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
+    with:
+      environment: production
+      helm-release-name: ${{ env.HELM_RELEASE }}
+      image-tag: ${{ needs.docker-build.outputs.image-tag }}
+      gke-cluster: ml-cluster
+      gke-zone: us-central1-a
+      replicas: "3"
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+
+  # ─── Notify ───────────────────────────────────────────────────────────────
+  notify:
+    name: 📣 Notify Slack
+    needs: [evaluate, deploy-production]
+    if: always()
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/notify-slack.yml@main
+    with:
+      status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
+      pipeline-name: "Model Retraining"
+      environment: production
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

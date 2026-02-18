@@ -1,0 +1,110 @@
+##############################################################################
+# MLOps CI/CD Pipeline — Fraud Detection Model
+#
+# This workflow is the CONSUMER of the shared-workflows-repo library.
+# It calls reusable workflows for every step, keeping this file minimal.
+#
+# Branch Strategy:
+#   develop → auto-deploy to staging (no approval needed)
+#   main    → deploy to production (requires manual approval via GitHub Environments)
+##############################################################################
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
+  HELM_RELEASE: fraud-detection
+  GKE_CLUSTER: ml-cluster
+  GKE_ZONE: us-central1-a
+
+jobs:
+  # ─── CI: Job 1 — Run Tests ──────────────────────────────────────────────────
+  test:
+    name: 🧪 Run Tests
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/run-tests.yml@main
+    with:
+      python-version: "3.10"
+      working-directory: "."
+
+  # ─── CI: Job 2 — Build Docker Image ─────────────────────────────────────────
+  docker-build:
+    name: 🐳 Build & Push Image
+    needs: test
+    if: github.event_name == 'push'
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/docker-build.yml@main
+    with:
+      image-name: ${{ env.IMAGE_NAME }}
+      registry: dockerhub
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  # ─── CI: Job 3 — Security Scan ───────────────────────────────────────────────
+  security-scan:
+    name: 🔒 Security Scan
+    needs: docker-build
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/security-scan.yml@main
+    with:
+      image-ref: ${{ needs.docker-build.outputs.image-tag }}
+      severity: "CRITICAL,HIGH"
+      exit-code: "1"
+
+  # ─── CD: Deploy to Staging (develop branch only, auto-deploy) ────────────────
+  deploy-staging:
+    name: 🚀 Deploy → Staging
+    needs: security-scan
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
+    with:
+      environment: staging
+      helm-release-name: ${{ env.HELM_RELEASE }}
+      image-tag: ${{ needs.docker-build.outputs.image-tag }}
+      gke-cluster: ${{ env.GKE_CLUSTER }}
+      gke-zone: ${{ env.GKE_ZONE }}
+      replicas: "1"
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+
+  # ─── CD: Deploy to Production (main branch, REQUIRES MANUAL APPROVAL) ────────
+  deploy-production:
+    name: 🏭 Deploy → Production
+    needs: security-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # This environment has a required reviewer configured in GitHub Settings
+    # The pipeline will PAUSE here until a human approves
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
+    with:
+      environment: production
+      helm-release-name: ${{ env.HELM_RELEASE }}
+      image-tag: ${{ needs.docker-build.outputs.image-tag }}
+      gke-cluster: ${{ env.GKE_CLUSTER }}
+      gke-zone: ${{ env.GKE_ZONE }}
+      replicas: "3"
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+
+  # ─── Notify: Slack Notification ──────────────────────────────────────────────
+  notify:
+    name: 📣 Notify Slack
+    needs: [deploy-staging, deploy-production]
+    if: always() && github.event_name == 'push'
+    uses: YOUR_ORG/shared-workflows-repo/.github/workflows/notify-slack.yml@main
+    with:
+      status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
+      pipeline-name: "Fraud Detection CI/CD"
+      environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+      image-tag: ${{ needs.docker-build.outputs.image-tag }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

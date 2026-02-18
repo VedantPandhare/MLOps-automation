@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+.venv/
+venv/
+env/
+.env
+*.env
+
+# ML artifacts
+models/
+data/
+*.pkl
+*.joblib
+mlruns/
+.dvc/cache/
+.dvc/tmp/
+eval_result.json
+metrics.json
+
+# Monitoring reports
+monitoring/reports/
+
+# Node / React
+portfolio-dashboard-app/node_modules/
+portfolio-dashboard-app/dist/
+portfolio-dashboard-app/.vite/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+test-results.xml
+.pytest_cache/
+
+# Secrets
+*.pem
+*.key
+service-account*.json
