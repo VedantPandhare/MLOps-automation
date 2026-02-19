@@ -25,7 +25,7 @@ graph TD
 
     subgraph "ML Application (Cloud GKE)"
         API[FastAPI Inference Server]
-        MOD[RandomForest Model]
+        MOD["RandomForest Model (scikit-learn)"]
         PROM[Prometheus Metrics]
         EVI[Evidently AI Drift Monitor]
     end
@@ -47,11 +47,25 @@ graph TD
     API --> PROM
     API --> MOD
     EVI --> RT
-    DASH --> API
-    DASH --> MF
+    DASH -.-> |"Visualization (Mock Data)"| API
 ```
 
 ---
+
+## 🌓 Component Breakdown: Static vs. Functional
+
+To understand how the app works, it's important to differentiate between what is a **Mock Interface** and what is a **Functional Backend**.
+
+| Component | Nature | What's Really Working? |
+| :--- | :--- | :--- |
+| **User Dashboard** | 🏛️ **Static / Mock** | The charts, accuracy stats, and "Inference Demo" are generated locally in the browser Using JavaScript logic. They are not currently connected to the live GKE API. |
+| **Inference API** | ⚙️ **Real Backend** | The FastAPI server in `ml-app-repo` is fully functional. It can take real data, run it through the model, and return a real fraud score. |
+| **CI/CD Pipelines** | 🧪 **Real Logic** | The GitHub Actions workflows actually run tests, build Docker images, and deploy your code to GKE. |
+| **Retraining Loop** | 🤖 **Real Backend** | The `retrain.yml` workflow actually pulls data from DVC, trains a model, and logs everything to MLflow. |
+| **Infrastructure** | ☸️ **Real Cloud** | Your GKE cluster, Docker Hub, and GCS buckets are real endpoints where your code and data live. |
+
+> [!NOTE]
+> The Dashboard is currently a **High-Fidelity Showcase**. It demonstrates *how* the MLOps data would be presented, while the heavy lifting happens in the background Python and YAML logic.
 
 ## ⚡ Core Features
 - **Shared Library Pattern**: Centralized automation using GitHub Actions reusable workflows for tests, builds, scans, and deploys.
