@@ -1,7 +1,15 @@
-# 🛡️ Fraud Detection MLOps Platform — Project Overview
+## 🎯 Core Mission
+This project serves a dual purpose: a functional business goal and a technical engineering goal.
 
-## 🎯 Mission
-To build a production-grade, end-to-end MLOps ecosystem that automates the lifecycle of a Fraud Detection model—from data versioning and standardized CI/CD pipelines to automated retraining and real-time monitoring.
+### 🛡️ Functional: Fraud Prevention
+The immediate goal is to protect transactions in real-time. The application analyzes incoming data (amount, location, timing) using a **RandomForest Model** to predict the likelihood of fraud, allowing for automatic blocking of high-risk activity.
+
+### ⚙️ Technical: MLOps Excellence
+The true mission is to demonstrate a **Production-Grade MLOps Pipeline**. It ensures that the model is not just "deployed" but "managed." This includes:
+*   **Standardization**: Centralized CI/CD via a Shared Library Repo.
+*   **Health Monitoring**: Automated drift detection using Evidently AI.
+*   **Self-Retraining**: Automated training and promotion loops when data patterns change.
+*   **Infrastructure as Code**: Helm-based deployments for consistency across environments.
 
 ---
 
@@ -56,20 +64,47 @@ graph TD
 
 ---
 
-## 🔄 User & System Workflow
+---
 
-### 1. Development & Deployment
-1. **Push**: Developer pushes a feature branch to `develop`.
-2. **CI**: Shared workflows run pytest, flake8, and Docker builds.
-3. **Staging**: The image is auto-deployed to GKE Staging.
-4. **Approval**: PR to `main` triggers a manual approval gate in GitHub Environments.
-5. **Production**: Once approved, the model is deployed to the Production cluster with zero downtime.
+## 🔄 Project Workflows
 
-### 2. Monitoring & Retraining
-1. **Drift Detection**: Evidently AI checks for distribution shifts in incoming data.
-2. **Trigger**: If drift is detected OR on a Sunday cron schedule, the retraining pipeline starts.
-3. **Evaluation**: New model metrics are compared against the current Production model.
-4. **Promotion**: If the new model is statistically better, it is registered in MLflow and auto-deployed.
+### 🧑‍💻 User / Developer Workflow
+This workflow describes the manual steps taken by a developer to contribute and deploy changes.
+
+1.  **Local Development**:
+    *   Clone the repository and install dependencies from `requirements.txt`.
+    *   Train the model locally using `python src/train.py` to verify logic.
+    *   Test the API locally using `uvicorn app.main:app` and Swagger UI (`/docs`).
+2.  **Feature Contribution**:
+    *   Create a feature branch (e.g., `feature/add-new-metric`).
+    *   Commit changes and push to the remote repository.
+3.  **Peer Review & Staging**:
+    *   Open a Pull Request (PR) from `feature/*` to `develop`.
+    *   Once merged, the system auto-deploys to the **Staging Environment** on GKE.
+    *   The developer verifies the change in the staging dashboard/API.
+4.  **Production Promotion**:
+    *   Open a PR from `develop` to `main`.
+    *   **Manual Gate**: A lead developer or DevOps engineer must manually approve the deployment in GitHub Actions.
+    *   Upon approval, the system executes a zero-downtime rolling update to the **Production Environment**.
+
+### 🤖 Automated System Workflow (CI/CD & MLOps)
+This workflow describes the automated background logic triggered by events.
+
+1.  **Continuous Integration (CI)**:
+    *   **Trigger**: Push to `develop` or `main`.
+    *   **Action**: Runs `pytest` (logic check), `flake8` (linting), and `coverage` (test depth).
+    *   **Build**: Generates a Docker image with a unique Git SHA tag.
+    *   **Security**: Scans the image with **Trivy**; pipeline fails if `CRITICAL` CVEs are found.
+2.  **Continuous Deployment (CD)**:
+    *   **Trigger**: Successful CI on `develop` or manual approval on `main`.
+    *   **Action**: Executes `helm upgrade` targeting the specific GKE cluster/namespace.
+    *   **Notification**: Status results (success/failure) are pushed to the team's Slack channel.
+3.  **Automated Model Retraining Loop**:
+    *   **Trigger**: Weekly Cron job (Sunday 2 AM) OR **Data Drift Detection** alert from Evidently AI.
+    *   **Data Pull**: System pulls the latest versioned dataset from GCS via DVC.
+    *   **Training**: Trains a new model candidate and logs metrics/artifacts to **MLflow**.
+    *   **Evaluation**: Compares candidate metrics (F1-score, AUC) against the current Production model.
+    *   **Promotion**: If the candidate is better (by >2% threshold), it is tagged as `Production` in the MLflow Model Registry and triggers a new CD build.
 
 ---
 
@@ -85,6 +120,7 @@ graph TD
 ---
 
 ## 🚀 Future Roadmap (What's Next?)
+- [ ] **GitHub Auto-Onboarding**: Develop a "One-Click Import" button in the dashboard to automatically test, secure, and deploy any GitHub repository. (See [Architecture Design](file:///d:/MLops/AUTO_ONBOARDING_ARCH.md))
 - [ ] **Automated Rollback**: Implement logic to revert to a previous model if production metrics drop below a threshold.
 - [ ] **A/B Testing**: Support for Canary or Shadow deployments to test models on live traffic safely.
 - [ ] **Feature Store**: Integrate Feast for centralized feature management and point-in-time joins.
