@@ -73,8 +73,13 @@ When importing a third-party repository, the following resource and cost implica
 *   **Namespaces**: Each imported repo can be configured to deploy into its own Kubernetes namespace (e.g., `ml-repo-name-staging`) to ensure isolation and prevent name collisions.
 *   **Resources**: New deployments will consume CPU and Memory on your GKE nodes. You may need to enable **GKE Autopilot** or **Horizontal Pod Autoscaling (HPA)** to handle the increased load.
 
-### 💰 Google Cloud Storage (GCS) Costs
-If the imported project uses DVC to version data in your GCS bucket, you will encounter:
-1.  **Storage Fees**: Charged per GB/month for the data stored. Standard models/datasets are usually small (pennies), but TB-scale data can add up.
-2.  **Operations Fees**: Class A/B operations (e.g., `dvc push/pull`) have a minor cost per 10,000 operations.
-3.  **Network Egress**: This is the most important part. If you pull data from GCS to a GitHub Actions runner (which is outside GCP), you will pay **Egress Fees**. To minimize this, we recommend using **GCP-hosted runners** for heavy data processing.
+### 💹 Unified Visualization (Charts & Metrics)
+This is where the platform moves from a "showcase" to a "command center":
+
+*   **Project Multi-Tenancy**: The Dashboard will gain a **Model Selector** dropdown.
+*   **Dynamic Data Feeds**: Instead of hardcoded fraud metrics, the charts will dynamically query columns from **MLflow** based on the selected project's metadata.
+*   **Standardized Observability**: Every imported repo gets its own **Prometheus/Grafana** dashboard automatically, visualizing real-time traffic and latency on GKE for that specific model.
+*   **History Sync**: The deployment table will filter by the active project, showing you the specific Git SHAs and deployment statuses for the third-party repo.
+
+> [!IMPORTANT]
+> Because you are using a **Shared Workflow Library**, any new repository you import is "born" with these charts. The moment the first pipeline runs, the metrics appear.
