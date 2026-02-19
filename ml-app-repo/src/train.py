@@ -27,7 +27,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # ─── Configuration ────────────────────────────────────────────────────────────
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+MLFLOW_TRACKING_URI = ""
+# MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 EXPERIMENT_NAME = "fraud-detection"
 MODEL_NAME = "fraud-detection-model"
 DATA_PATH = os.getenv("DATA_PATH", "data/fraud_dataset.csv")
@@ -162,42 +163,50 @@ def save_artifacts(model, scaler):
 
 
 def run_training():
-    """Main training pipeline with MLflow tracking."""
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment(EXPERIMENT_NAME)
+    """Main training pipeline with MLflow tracking (if available)."""
+    try:
+        mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+        mlflow.set_experiment(EXPERIMENT_NAME)
+        run_context = mlflow.start_run()
+    except Exception as e:
+        logger.warning(f"Could not connect to MLflow: {e}. Proceeding without tracking.")
+        run_context = None
 
-    with mlflow.start_run() as run:
-        logger.info(f"MLflow Run ID: {run.info.run_id}")
+    # Load and preprocess data
+    df = load_data(DATA_PATH)
+    logger.info(f"Dataset shape: {df.shape}, Fraud rate: {df['label'].mean():.2%}")
+    X_train, X_test, y_train, y_test, scaler = preprocess(df)
 
-        # Log hyperparameters
-        mlflow.log_params({
-            "n_estimators": N_ESTIMATORS,
-            "max_depth": MAX_DEPTH,
-            "min_samples_split": MIN_SAMPLES_SPLIT,
-            "random_state": RANDOM_STATE,
-            "test_size": TEST_SIZE,
-        })
+    # Train
+    model = train_model(X_train, y_train)
 
-        # Load and preprocess data
-        df = load_data(DATA_PATH)
-        logger.info(f"Dataset shape: {df.shape}, Fraud rate: {df['label'].mean():.2%}")
-        X_train, X_test, y_train, y_test, scaler = preprocess(df)
+    # Evaluate
+    metrics = evaluate_model(model, X_test, y_test)
 
-        # Train
-        model = train_model(X_train, y_train)
+    if run_context:
+        try:
+            with run_context:
+                logger.info(f"MLflow Run ID: {run_context.info.run_id}")
+                # Log hyperparameters
+                mlflow.log_params({
+                    "n_estimators": N_ESTIMATORS,
+                    "max_depth": MAX_DEPTH,
+                    "min_samples_split": MIN_SAMPLES_SPLIT,
+                    "random_state": RANDOM_STATE,
+                    "test_size": TEST_SIZE,
+                })
+                mlflow.log_metrics(metrics)
+                mlflow.sklearn.log_model(model, "model", registered_model_name=MODEL_NAME)
+                mlflow.log_artifact(MODEL_OUTPUT_PATH)
+                mlflow.log_artifact(SCALER_OUTPUT_PATH)
+        except Exception as e:
+            logger.error(f"Error logging to MLflow: {e}")
 
-        # Evaluate
-        metrics = evaluate_model(model, X_test, y_test)
-        mlflow.log_metrics(metrics)
+    # Always save artifacts locally
+    save_artifacts(model, scaler)
 
-        # Save artifacts
-        save_artifacts(model, scaler)
-        mlflow.sklearn.log_model(model, "model", registered_model_name=MODEL_NAME)
-        mlflow.log_artifact(MODEL_OUTPUT_PATH)
-        mlflow.log_artifact(SCALER_OUTPUT_PATH)
-
-        logger.info(f"Training complete. Run ID: {run.info.run_id}")
-        return metrics, run.info.run_id
+    logger.info("Training complete.")
+    return metrics, (run_context.info.run_id if run_context else "local-run")
 
 
 if __name__ == "__main__":
