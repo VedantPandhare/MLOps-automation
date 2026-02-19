@@ -22,7 +22,7 @@ on:
       - develop
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
+  IMAGE_NAME: vedantpandhare/fraud-detection
   HELM_RELEASE: fraud-detection
   GKE_CLUSTER: ml-cluster
   GKE_ZONE: us-central1-a
@@ -43,7 +43,7 @@ jobs:
     if: github.event_name == 'push'
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/docker-build.yml@main
     with:
-      image-name: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
+      image-name: vedantpandhare/fraud-detection
       registry: dockerhub
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -62,7 +62,7 @@ jobs:
   # ─── CD: Deploy to Staging (develop branch only, auto-deploy) ────────────────
   deploy-staging:
     name: 🚀 Deploy → Staging
-    needs: security-scan
+    needs: [security-scan, docker-build]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
     with:
@@ -79,7 +79,7 @@ jobs:
   # ─── CD: Deploy to Production (main branch, REQUIRES MANUAL APPROVAL) ────────
   deploy-production:
     name: 🏭 Deploy → Production
-    needs: security-scan
+    needs: [security-scan, docker-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     # This environment has a required reviewer configured in GitHub Settings
     # The pipeline will PAUSE here until a human approves

@@ -31,7 +31,7 @@ on:
         type: string
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
+  IMAGE_NAME: vedantpandhare/fraud-detection
   HELM_RELEASE: fraud-detection
 
 jobs:
@@ -198,7 +198,7 @@ jobs:
     needs: register-model
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/docker-build.yml@main
     with:
-      image-name: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
+      image-name: vedantpandhare/fraud-detection
       registry: dockerhub
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -207,7 +207,7 @@ jobs:
   # ─── Step 6: Deploy Updated Model ─────────────────────────────────────────
   deploy-production:
     name: 🚀 Deploy Retrained Model
-    needs: [train, docker-build]
+    needs: [docker-build]
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
     with:
       environment: production
