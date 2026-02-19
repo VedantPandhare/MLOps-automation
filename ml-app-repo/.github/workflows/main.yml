@@ -43,7 +43,7 @@ jobs:
     if: github.event_name == 'push'
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/docker-build.yml@main
     with:
-      image-name: ${{ env.IMAGE_NAME }}
+      image-name: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
       registry: dockerhub
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -67,10 +67,10 @@ jobs:
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
     with:
       environment: staging
-      helm-release-name: ${{ env.HELM_RELEASE }}
+      helm-release-name: fraud-detection
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
-      gke-cluster: ${{ env.GKE_CLUSTER }}
-      gke-zone: ${{ env.GKE_ZONE }}
+      gke-cluster: ml-cluster
+      gke-zone: us-central1-a
       replicas: "1"
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
@@ -86,10 +86,10 @@ jobs:
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
     with:
       environment: production
-      helm-release-name: ${{ env.HELM_RELEASE }}
+      helm-release-name: fraud-detection
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
-      gke-cluster: ${{ env.GKE_CLUSTER }}
-      gke-zone: ${{ env.GKE_ZONE }}
+      gke-cluster: ml-cluster
+      gke-zone: us-central1-a
       replicas: "3"
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
@@ -98,7 +98,7 @@ jobs:
   # ─── Notify: Slack Notification ──────────────────────────────────────────────
   notify:
     name: 📣 Notify Slack
-    needs: [deploy-staging, deploy-production]
+    needs: [docker-build, deploy-staging, deploy-production]
     if: always() && github.event_name == 'push'
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/notify-slack.yml@main
     with:

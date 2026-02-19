@@ -22,7 +22,7 @@ on:
       force-promote:
         description: "Force promote new model even if not better"
         required: false
-        default: "false"
+        default: false
         type: boolean
       promotion-threshold:
         description: "Minimum F1 improvement to promote (default: 0.02)"
@@ -169,7 +169,7 @@ jobs:
   # ─── Step 4: Register & Promote Model ─────────────────────────────────────
   register-model:
     name: 📝 Register Model in MLflow
-    needs: evaluate
+    needs: [train, evaluate]
     if: needs.evaluate.outputs.should-promote == 'true' || inputs.force-promote == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -198,7 +198,7 @@ jobs:
     needs: register-model
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/docker-build.yml@main
     with:
-      image-name: ${{ env.IMAGE_NAME }}
+      image-name: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
       registry: dockerhub
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -207,11 +207,11 @@ jobs:
   # ─── Step 6: Deploy Updated Model ─────────────────────────────────────────
   deploy-production:
     name: 🚀 Deploy Retrained Model
-    needs: docker-build
+    needs: [train, docker-build]
     uses: YOUR_ORG/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
     with:
       environment: production
-      helm-release-name: ${{ env.HELM_RELEASE }}
+      helm-release-name: fraud-detection
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
       gke-cluster: ml-cluster
       gke-zone: us-central1-a
