@@ -495,6 +495,10 @@ export default function Dashboard() {
                           <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.2} />
                           <stop offset="95%" stopColor="var(--accent-blue)" stopOpacity={0} />
                         </linearGradient>
+                        <linearGradient id="f1Grad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--accent-green)" stopOpacity={0.1} />
+                          <stop offset="95%" stopColor="var(--accent-green)" stopOpacity={0} />
+                        </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                       <XAxis dataKey="date" tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -503,7 +507,8 @@ export default function Dashboard() {
                         contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px', fontSize: '0.8rem' }}
                         itemStyle={{ color: '#fafafa' }}
                       />
-                      <Area type="monotone" dataKey="accuracy" stroke="var(--accent-blue)" fill="url(#accGrad)" strokeWidth={2.5} dot={false} />
+                      <Area type="monotone" dataKey="accuracy" name="Accuracy" stroke="var(--accent-blue)" fill="url(#accGrad)" strokeWidth={2.5} dot={false} />
+                      <Area type="monotone" dataKey="f1" name="F1 Score" stroke="var(--accent-green)" fill="url(#f1Grad)" strokeWidth={2} dot={false} strokeDasharray="5 5" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
