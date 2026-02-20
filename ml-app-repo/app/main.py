@@ -20,7 +20,10 @@ from schemas import (
     BatchPredictionRequest,
     BatchPredictionResponse,
     HealthResponse,
+    OnboardRequest,
+    OnboardResponse,
 )
+from onboarding import GithubOnboardingService
 
 # Add src to path for imports
 import sys
@@ -170,6 +173,19 @@ async def model_info():
         "environment": os.getenv("ENVIRONMENT", "development"),
         "mlflow_tracking_uri": os.getenv("MLFLOW_TRACKING_URI", "N/A"),
     }
+
+
+@app.post("/onboard", response_model=OnboardResponse, tags=["Onboarding"])
+async def onboard_repository(request: OnboardRequest):
+    """
+    Onboard a new repository by injecting the standardized MLOps workflow.
+    Requires a valid GITHUB_TOKEN in the environment.
+    """
+    service = GithubOnboardingService()
+    result = await service.onboard_repo(request.repo_url, request.image_name)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result
 
 
 if __name__ == "__main__":

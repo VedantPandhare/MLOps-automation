@@ -78,10 +78,18 @@ class BatchPredictionResponse(BaseModel):
             self.fraud_rate = round(self.fraud_count / self.total_transactions, 4)
 
 
-class HealthResponse(BaseModel):
-    """Health check response schema."""
 
-    status: str = Field(..., description="API health status")
-    model_loaded: bool = Field(..., description="Whether the ML model is loaded")
-    version: str = Field(..., description="API version")
-    environment: str = Field(..., description="Deployment environment")
+class OnboardRequest(BaseModel):
+    """Request schema for onboarding a new repository."""
+
+    repo_url: str = Field(..., description="Full GitHub repository URL", example="https://github.com/user/repo")
+    image_name: Optional[str] = Field(None, description="Custom Docker image name")
+
+
+class OnboardResponse(BaseModel):
+    """Response schema for the onboarding process."""
+
+    success: bool
+    message: str
+    injected_workflow: Optional[str] = None
+    pr_url: Optional[str] = None

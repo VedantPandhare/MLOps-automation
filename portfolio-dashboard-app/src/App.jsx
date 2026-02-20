@@ -454,9 +454,86 @@ function HistoryTab() {
   );
 }
 
+// ─── Onboarding Modal ───────────────────────────────────────────────────────
+function OnboardingModal({ isOpen, onClose }) {
+  const [repoUrl, setRepoUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  const handleOnboard = async () => {
+    if (!repoUrl) return;
+    setLoading(true);
+    setStatus({ type: 'info', message: 'Validating repository...' });
+
+    try {
+      const response = await fetch('http://localhost:8000/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo_url: repoUrl }),
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus({ type: 'success', message: '🎉 Success! Workflow injected. Pipeline triggered.' });
+        setTimeout(() => { onClose(); setStatus(null); setRepoUrl(''); }, 3000);
+      } else {
+        setStatus({ type: 'error', message: data.detail || 'Failed to onboard repo.' });
+      }
+    } catch (err) {
+      setStatus({ type: 'error', message: 'Connection error. Is the backend running?' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card animate-zoom-in">
+        <div className="section-header">
+          <div className="section-title">🚀 One-Click MLOps Import</div>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+          Paste a GitHub repository URL. We'll automatically inject our standardized CI/CD pipeline, security scans, and deployment logic.
+        </p>
+
+        <div className="form-group">
+          <label className="form-label">GitHub Repository URL</label>
+          <input
+            className="form-input"
+            placeholder="https://github.com/username/repo"
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+          />
+        </div>
+
+        {status && (
+          <div className={`status-alert ${status.type}`} style={{
+            marginTop: '1rem', padding: '10px', borderRadius: '8px', fontSize: '0.85rem',
+            background: status.type === 'success' ? 'rgba(104,211,145,0.15)' : status.type === 'error' ? 'rgba(252,129,129,0.15)' : 'rgba(99,179,237,0.15)',
+            color: status.type === 'success' ? '#68d391' : status.type === 'error' ? '#fc8181' : '#63b3ed',
+            border: `1px solid ${status.type === 'success' ? '#68d391' : status.type === 'error' ? '#fc8181' : '#63b3ed'}`
+          }}>
+            {status.message}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+          <button className="predict-btn" style={{ margin: 0 }} onClick={handleOnboard} disabled={loading}>
+            {loading ? '⚡ Porting...' : '⚡ Start Auto-Onboarding'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [stats, setStats] = useState({ accuracy: 95.2, f1: 91.8, latency: 4.3, drift: 0.08 });
 
   // Live stats update every 3 seconds
@@ -505,6 +582,13 @@ export default function App() {
           </nav>
 
           <div className="header-status">
+            <button
+              className="predict-btn"
+              style={{ margin: 0, padding: '6px 16px', fontSize: '0.8rem', marginRight: '1.5rem' }}
+              onClick={() => setIsModalOpen(true)}
+            >
+              🚀 Import Project
+            </button>
             <div className="status-dot" />
             Pipeline Running
           </div>
@@ -517,6 +601,8 @@ export default function App() {
         {activeTab === 'inference' && <InferenceTab />}
         {activeTab === 'history' && <HistoryTab />}
       </main>
+
+      <OnboardingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }

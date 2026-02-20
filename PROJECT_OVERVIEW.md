@@ -134,7 +134,7 @@ This workflow describes the automated background logic triggered by events.
 ---
 
 ## 🚀 Future Roadmap (What's Next?)
-- [ ] **GitHub Auto-Onboarding**: Develop a "One-Click Import" button in the dashboard to automatically test, secure, and deploy any GitHub repository. (See [Architecture Design](file:///d:/MLops/AUTO_ONBOARDING_ARCH.md))
+- [x] **GitHub Auto-Onboarding**: [IMPLEMENTED] One-Click Import button in the dashboard to automatically test, secure, and deploy any GitHub repository. (See [Architecture Design](file:///d:/MLops/AUTO_ONBOARDING_ARCH.md))
 - [ ] **Automated Rollback**: Implement logic to revert to a previous model if production metrics drop below a threshold.
 - [ ] **A/B Testing**: Support for Canary or Shadow deployments to test models on live traffic safely.
 - [ ] **Feature Store**: Integrate Feast for centralized feature management and point-in-time joins.
