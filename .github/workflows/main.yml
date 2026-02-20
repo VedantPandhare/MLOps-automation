@@ -34,7 +34,7 @@ jobs:
     uses: ./.github/workflows/run-tests.yml
     with:
       python-version: "3.10"
-      working-directory: "."
+      working-directory: "ml-app-repo"
 
   # ─── CI: Job 2 — Build Docker Image ─────────────────────────────────────────
   docker-build:
@@ -44,6 +44,8 @@ jobs:
     uses: ./.github/workflows/docker-build.yml
     with:
       image-name: vedantpandhare/fraud-detection
+      dockerfile-path: "ml-app-repo/Dockerfile"
+      build-context: "ml-app-repo"
       registry: dockerhub
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -68,6 +70,7 @@ jobs:
     with:
       environment: staging
       helm-release-name: fraud-detection
+      helm-chart-path: "ml-app-repo/helm/ml-app"
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
       gke-cluster: ml-cluster
       gke-zone: us-central1-a
@@ -87,6 +90,7 @@ jobs:
     with:
       environment: production
       helm-release-name: fraud-detection
+      helm-chart-path: "ml-app-repo/helm/ml-app"
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
       gke-cluster: ml-cluster
       gke-zone: us-central1-a

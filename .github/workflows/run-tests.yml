@@ -46,38 +46,13 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: |
           echo "Running flake8 linting..."
-          # Stop the build if there are Python syntax errors or undefined names
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Treat all other errors as warnings
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-          echo "Linting passed!"
 
       - name: Run Tests with Coverage
         id: coverage
         working-directory: ${{ inputs.working-directory }}
         run: |
-          echo "Running pytest with coverage..."
-          pytest tests/ \
-            --cov=. \
-            --cov-report=xml:coverage.xml \
-            --cov-report=term-missing \
-            --junitxml=test-results.xml \
-            -v
+          pytest tests/ --cov=. --cov-report=xml:coverage.xml --cov-report=term-missing -v
           COVERAGE=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); print(round(float(root.attrib['line-rate']) * 100, 2))")
           echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
-          echo "Coverage: $COVERAGE%"
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results
-          path: |
-            test-results.xml
-            coverage.xml
-          retention-days: 7
-
-      - name: Coverage Summary
-        run: |
-          echo "## Test Coverage Report" >> $GITHUB_STEP_SUMMARY
-          echo "Coverage: ${{ steps.coverage.outputs.percentage }}%" >> $GITHUB_STEP_SUMMARY

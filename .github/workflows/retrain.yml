@@ -62,15 +62,15 @@ jobs:
           DVC_CREDENTIALS: ${{ secrets.DVC_CREDENTIALS }}
         run: |
           echo "Pulling latest dataset from GCS via DVC..."
-          dvc pull data/
+          cd ml-app-repo && dvc pull data/
           echo "Data pulled successfully."
-          ls -lh data/
+          ls -lh ml-app-repo/data/
 
       - name: Upload Data Artifact
         uses: actions/upload-artifact@v4
         with:
           name: training-data
-          path: data/
+          path: ml-app-repo/data/
           retention-days: 1
 
   # ─── Step 2: Train New Model ──────────────────────────────────────────────
@@ -91,22 +91,28 @@ jobs:
           cache: "pip"
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r ml-app-repo/requirements.txt
 
       - name: Download Training Data
         uses: actions/download-artifact@v4
         with:
           name: training-data
-          path: data/
+          path: ml-app-repo/data/
 
       - name: Train Model
         id: train
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
           PROMOTION_THRESHOLD: ${{ inputs.promotion-threshold || '0.02' }}
+          DATA_PATH: ml-app-repo/data/fraud_dataset.csv
+          MODEL_OUTPUT_PATH: ml-app-repo/models/fraud_model.pkl
+          SCALER_OUTPUT_PATH: ml-app-repo/models/scaler.pkl
         run: |
           echo "Starting model training..."
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/ml-app-repo
           python -c "
+          import sys
+          sys.path.append('ml-app-repo')
           from src.train import run_training
           metrics, run_id = run_training()
           print(f'run_id={run_id}')
@@ -119,7 +125,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: trained-model
-          path: models/
+          path: ml-app-repo/models/
           retention-days: 7
 
   # ─── Step 3: Evaluate — Compare vs Production ─────────────────────────────
@@ -140,17 +146,19 @@ jobs:
           cache: "pip"
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r ml-app-repo/requirements.txt
 
       - name: Evaluate Model
         id: evaluate
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
           MLFLOW_RUN_ID: ${{ needs.train.outputs.run-id }}
+          DATA_PATH: ml-app-repo/data/fraud_dataset.csv
           PROMOTION_THRESHOLD: ${{ inputs.promotion-threshold || '0.02' }}
           EVAL_OUTPUT_PATH: eval_result.json
         run: |
-          python src/evaluate.py ${{ needs.train.outputs.run-id }}
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/ml-app-repo
+          python ml-app-repo/src/evaluate.py ${{ needs.train.outputs.run-id }}
           SHOULD_PROMOTE=$(python -c "import json; r=json.load(open('eval_result.json')); print(str(r['should_promote']).lower())")
           echo "should_promote=$SHOULD_PROMOTE" >> $GITHUB_OUTPUT
           echo "Promotion decision: $SHOULD_PROMOTE"
@@ -183,14 +191,15 @@ jobs:
           cache: "pip"
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r ml-app-repo/requirements.txt
 
       - name: Register and Promote Model
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
           MLFLOW_RUN_ID: ${{ needs.train.outputs.run-id }}
         run: |
-          python src/register_model.py ${{ needs.train.outputs.run-id }}
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/ml-app-repo
+          python ml-app-repo/src/register_model.py ${{ needs.train.outputs.run-id }}
 
   # ─── Step 5: Build New Docker Image ───────────────────────────────────────
   docker-build:
@@ -199,6 +208,8 @@ jobs:
     uses: ./.github/workflows/docker-build.yml
     with:
       image-name: vedantpandhare/fraud-detection
+      dockerfile-path: "ml-app-repo/Dockerfile"
+      build-context: "ml-app-repo"
       registry: dockerhub
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -212,6 +223,7 @@ jobs:
     with:
       environment: production
       helm-release-name: fraud-detection
+      helm-chart-path: "ml-app-repo/helm/ml-app"
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
       gke-cluster: ml-cluster
       gke-zone: us-central1-a
@@ -230,5 +242,6 @@ jobs:
       status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
       pipeline-name: "Model Retraining"
       environment: production
+      image-tag: ${{ needs.docker-build.outputs.image-tag }}
     secrets:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
