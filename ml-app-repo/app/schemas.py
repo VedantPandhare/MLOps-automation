@@ -3,7 +3,7 @@ Pydantic Schemas for the Fraud Detection API
 Request and response models with validation.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 
 
@@ -21,8 +21,9 @@ class PredictionRequest(BaseModel):
     card_age_days: int = Field(..., ge=0, description="Age of the card in days", example=730)
     failed_attempts_24h: int = Field(..., ge=0, description="Failed payment attempts in last 24h", example=0)
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        protected_namespaces=(),
+        json_schema_extra={
             "example": {
                 "amount": 250.00,
                 "hour_of_day": 14,
@@ -36,11 +37,13 @@ class PredictionRequest(BaseModel):
                 "failed_attempts_24h": 0,
             }
         }
-    }
+    )
 
 
 class PredictionResponse(BaseModel):
     """Output schema for a single transaction prediction."""
+
+    model_config = ConfigDict(protected_namespaces=())
 
     is_fraud: bool = Field(..., description="True if transaction is predicted as fraud")
     fraud_probability: float = Field(..., ge=0, le=1, description="Probability of fraud (0-1)")
@@ -77,6 +80,16 @@ class BatchPredictionResponse(BaseModel):
         if self.total_transactions > 0:
             self.fraud_rate = round(self.fraud_count / self.total_transactions, 4)
 
+
+
+class HealthResponse(BaseModel):
+    """Schema for health check responses."""
+
+    model_config = ConfigDict(protected_namespaces=())
+    status: str
+    model_loaded: bool
+    version: str
+    environment: str
 
 
 class OnboardRequest(BaseModel):

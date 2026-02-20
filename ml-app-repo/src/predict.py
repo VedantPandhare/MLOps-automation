@@ -12,8 +12,11 @@ from typing import List, Dict, Any
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-MODEL_PATH = os.getenv("MODEL_OUTPUT_PATH", "models/fraud_model.pkl")
-SCALER_PATH = os.getenv("SCALER_OUTPUT_PATH", "models/scaler.pkl")
+# Determine the project root (one level up from src)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+MODEL_PATH = os.getenv("MODEL_OUTPUT_PATH", os.path.join(ROOT_DIR, "models", "fraud_model.pkl"))
+SCALER_PATH = os.getenv("SCALER_OUTPUT_PATH", os.path.join(ROOT_DIR, "models", "scaler.pkl"))
 
 FEATURE_COLUMNS = [
     "amount",
