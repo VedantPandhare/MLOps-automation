@@ -196,7 +196,7 @@ jobs:
   docker-build:
     name: 🐳 Build New Image
     needs: register-model
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/docker-build.yml@main
+    uses: ./.github/workflows/docker-build.yml
     with:
       image-name: vedantpandhare/fraud-detection
       registry: dockerhub
@@ -208,7 +208,7 @@ jobs:
   deploy-production:
     name: 🚀 Deploy Retrained Model
     needs: [docker-build]
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
+    uses: ./.github/workflows/deploy-k8s.yml
     with:
       environment: production
       helm-release-name: fraud-detection
@@ -225,7 +225,7 @@ jobs:
     name: 📣 Notify Slack
     needs: [evaluate, deploy-production]
     if: always()
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/notify-slack.yml@main
+    uses: ./.github/workflows/notify-slack.yml
     with:
       status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
       pipeline-name: "Model Retraining"

@@ -31,7 +31,7 @@ jobs:
   # ─── CI: Job 1 — Run Tests ──────────────────────────────────────────────────
   test:
     name: 🧪 Run Tests
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/run-tests.yml@main
+    uses: ./.github/workflows/run-tests.yml
     with:
       python-version: "3.10"
       working-directory: "."
@@ -41,7 +41,7 @@ jobs:
     name: 🐳 Build & Push Image
     needs: test
     if: github.event_name == 'push'
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/docker-build.yml@main
+    uses: ./.github/workflows/docker-build.yml
     with:
       image-name: vedantpandhare/fraud-detection
       registry: dockerhub
@@ -53,7 +53,7 @@ jobs:
   security-scan:
     name: 🔒 Security Scan
     needs: docker-build
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/security-scan.yml@main
+    uses: ./.github/workflows/security-scan.yml
     with:
       image-ref: ${{ needs.docker-build.outputs.image-tag }}
       severity: "CRITICAL,HIGH"
@@ -64,7 +64,7 @@ jobs:
     name: 🚀 Deploy → Staging
     needs: [security-scan, docker-build]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
+    uses: ./.github/workflows/deploy-k8s.yml
     with:
       environment: staging
       helm-release-name: fraud-detection
@@ -83,7 +83,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     # This environment has a required reviewer configured in GitHub Settings
     # The pipeline will PAUSE here until a human approves
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
+    uses: ./.github/workflows/deploy-k8s.yml
     with:
       environment: production
       helm-release-name: fraud-detection
@@ -100,7 +100,7 @@ jobs:
     name: 📣 Notify Slack
     needs: [docker-build, deploy-staging, deploy-production]
     if: always() && github.event_name == 'push'
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/notify-slack.yml@main
+    uses: ./.github/workflows/notify-slack.yml
     with:
       status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
       pipeline-name: "Fraud Detection CI/CD"

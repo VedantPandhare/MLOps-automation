@@ -50,11 +50,11 @@ on:
 
 jobs:
   test:
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/run-tests.yml@main
+    uses: VedantPandhare/MLOps-automation/shared-workflows-repo/.github/workflows/run-tests.yml@main
 
   docker-build:
     needs: test
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/docker-build.yml@main
+    uses: VedantPandhare/MLOps-automation/shared-workflows-repo/.github/workflows/docker-build.yml@main
     with:
       image-name: {image_name or f"{owner}/{repo}"}
       registry: dockerhub
@@ -63,7 +63,7 @@ jobs:
   deploy-staging:
     needs: docker-build
     if: github.ref == 'refs/heads/develop'
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
+    uses: VedantPandhare/MLOps-automation/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
     with:
       environment: staging
       helm-release-name: {repo}-staging
@@ -73,7 +73,7 @@ jobs:
   deploy-production:
     needs: docker-build
     if: github.ref == 'refs/heads/main'
-    uses: VedantPandhare/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
+    uses: VedantPandhare/MLOps-automation/shared-workflows-repo/.github/workflows/deploy-k8s.yml@main
     with:
       environment: production
       helm-release-name: {repo}-production
