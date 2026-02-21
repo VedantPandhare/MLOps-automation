@@ -36,7 +36,7 @@ function OnboardingModal({ isOpen, onClose }) {
   const handleOnboard = async () => {
     if (!repoUrl) return;
     setLoading(true);
-    setStatus({ type: 'info', message: 'Initiating MLOps onboarding sequence...' });
+    setStatus({ type: 'info', message: 'Initiating Conduit onboarding sequence...' });
 
     try {
       const response = await fetch(`${API_BASE_URL}/onboard`, {
@@ -69,7 +69,7 @@ function OnboardingModal({ isOpen, onClose }) {
           <h3 className="section-title">Import New Product/Repo</h3>
         </div>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          Connect your GitHub repository to automatically inject standardized MLOps workflows.
+          Connect your GitHub repository to automatically inject standardized Conduit workflows.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -422,7 +422,7 @@ export default function Dashboard() {
             <div className="logo-icon"><Zap size={20} fill="white" /></div>
             <div className="logo-text">
               <h1>Conduit</h1>
-              <p>Automated MLOps Lifecycle</p>
+              <p>Automated Pipeline Lifecycle</p>
             </div>
           </div>
 

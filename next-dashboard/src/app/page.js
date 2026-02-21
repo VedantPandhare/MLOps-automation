@@ -751,15 +751,15 @@ export default function LandingPage() {
       {/* ── NAV ── */}
       <nav className={`nav ${scrollY > 40 ? "scrolled" : ""}`}>
         <a href="/" className="nav-logo">
-          <div className="logo-mark" style={{ borderColor: 'rgba(59, 130, 246, 0.5)', background: 'rgba(59, 130, 246, 0.05)' }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <div className="logo-mark" style={{ width: '36px', height: '36px', borderColor: 'rgba(59, 130, 246, 0.5)', background: 'rgba(59, 130, 246, 0.05)' }}>
+            <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
               <rect x="1" y="1" width="5" height="5" stroke="rgba(59, 130, 246, 0.8)" strokeWidth="0.8" />
               <rect x="8" y="1" width="5" height="5" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
               <rect x="1" y="8" width="5" height="5" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
               <rect x="8" y="8" width="5" height="5" stroke="rgba(59, 130, 246, 0.8)" strokeWidth="0.8" />
             </svg>
           </div>
-          <span style={{ fontSize: '1.4rem', color: '#fff', textShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}>Conduit</span>
+          <span style={{ fontSize: '2rem', fontWeight: 600, color: '#fff', textShadow: '0 0 30px rgba(59, 130, 246, 0.4)', letterSpacing: '0.05em' }}>Conduit</span>
         </a>
 
         <ul className="nav-links">
