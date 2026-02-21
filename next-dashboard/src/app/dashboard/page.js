@@ -421,8 +421,8 @@ export default function Dashboard() {
           <div className="logo-area">
             <div className="logo-icon"><Zap size={20} fill="white" /></div>
             <div className="logo-text">
-              <h1>MLOps Platform</h1>
-              <p>Fraud Detection • Enterprise Engine</p>
+              <h1>Conduit</h1>
+              <p>Automated MLOps Lifecycle</p>
             </div>
           </div>
 

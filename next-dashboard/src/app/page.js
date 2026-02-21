@@ -119,10 +119,10 @@ const PipelineDiagram = () => {
                     height: 52,
                     borderRadius: "50%",
                     border: `1px solid ${isActive
-                        ? "rgba(255,255,255,0.7)"
-                        : isPast
-                          ? "rgba(255,255,255,0.3)"
-                          : "rgba(255,255,255,0.12)"
+                      ? "rgba(255,255,255,0.7)"
+                      : isPast
+                        ? "rgba(255,255,255,0.3)"
+                        : "rgba(255,255,255,0.12)"
                       }`,
                     background: isActive
                       ? "rgba(255,255,255,0.1)"
@@ -751,15 +751,15 @@ export default function LandingPage() {
       {/* ── NAV ── */}
       <nav className={`nav ${scrollY > 40 ? "scrolled" : ""}`}>
         <a href="/" className="nav-logo">
-          <div className="logo-mark">
+          <div className="logo-mark" style={{ borderColor: 'rgba(59, 130, 246, 0.5)', background: 'rgba(59, 130, 246, 0.05)' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="1" width="5" height="5" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" />
+              <rect x="1" y="1" width="5" height="5" stroke="rgba(59, 130, 246, 0.8)" strokeWidth="0.8" />
               <rect x="8" y="1" width="5" height="5" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
               <rect x="1" y="8" width="5" height="5" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
-              <rect x="8" y="8" width="5" height="5" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" />
+              <rect x="8" y="8" width="5" height="5" stroke="rgba(59, 130, 246, 0.8)" strokeWidth="0.8" />
             </svg>
           </div>
-          MLOps Automation
+          <span style={{ fontSize: '1.4rem', color: '#fff', textShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}>Conduit</span>
         </a>
 
         <ul className="nav-links">
@@ -984,7 +984,7 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer>
-        <div className="footer-left">MLOps Automation</div>
+        <div className="footer-left" style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Conduit</div>
         <div className="footer-right">
           <a href={GITHUB_LINK} target="_blank" rel="noreferrer">
             GitHub
