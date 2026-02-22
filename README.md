@@ -85,24 +85,98 @@ To simulate the entire automated deployment pipeline, you need to configure infr
 | Secret | Origin |
 | :--- | :--- |
 | **`DOCKERHUB_USERNAME`** | Your personal [Docker Hub](https://hub.docker.com/) username. |
-| **`DOCKERHUB_TOKEN`** | [Docker Hub Settings](https://hub.docker.com/settings/security) → Security → New Access Token. |
+| **`DOCKERHUB_TOKEN`** | [Docker Hub Settings](https://hub.docker.com/settings/security) → Security → New Access Token (Required: **Read & Write**). |
 | **`GCP_PROJECT_ID`** | [GCP Console](https://console.cloud.google.com/) → Top project selector → Project ID column. |
-| **`GCP_SA_KEY`** | [GCP IAM Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) → Select SA → Keys → Add Key (JSON). |
+| **`GCP_SA_KEY`** | [GCP IAM Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) → Create SA → Grant Roles → Keys → Add Key (JSON). |
+
+### 🛠️ Pre-requisite: Creating a GCP Service Account
+
+If you don't have a Service Account key yet:
+
+1.  **Identity**: Go to the [GCP Service Accounts page](https://console.cloud.google.com/iam-admin/serviceaccounts). Click **Create Service Account**. Give it a name (e.g., `github-actions-mlops`) and click **Create and Continue**.
+2.  **Assign Roles**: Add the following roles to the account:
+    *   `Kubernetes Engine Developer` (for GKE deployment)
+    *   `Storage Object Admin` (for DVC data access)
+    *   `Artifact Registry Writer` (optional, for GCP registry)
+3.  **Generate Key**: Click on the account's Email → **Keys** tab → **Add Key** → **Create new key** → Select **JSON**.
+
+> [!CAUTION]
+> **NEVER upload your `.json` key file to GitHub.** It contains full administrative access to your cloud resources. 
+> 1. Use the command below to **Base64 encode** the file.
+> 2. Add the resulting string as a **GitHub Secret**.
+> 3. Delete the local `.json` file or move it to a secure location outside of this repository.
 
 > [!IMPORTANT]
-> The `GCP_SA_KEY` must be **Base64 encoded** before adding to GitHub.
-> - **Windows (PowerShell)**: `[Convert]::ToBase64String([IO.File]::ReadAllBytes('key.json'))`
-> - **Linux/macOS**: `base64 -i key.json`
+> **Base64 Encoding Commands**:
+> - **Windows (PowerShell)**: `[Convert]::ToBase64String([IO.File]::ReadAllBytes('path/to/key.json'))`
+> - **Linux/macOS**: `base64 -i path/to/key.json`
 
 ### 2. Configure GitHub Secrets
 
-1.  Go to your repository on GitHub.
-2.  Navigate to **Settings** → **Secrets and variables** → **Actions**.
-3.  Click **New repository secret** and add each variable from the table above.
+> [!IMPORTANT]
+> **GitHub Secrets vs. Local `.env`**: 
+> - **`.env`**: Used for your local machine ONLY.
+> - **GitHub Secrets**: Used by the automated pipeline on GitHub's servers. **Do not** paste infrastructure secrets into your local `.env`.
 
-### 3. Trigger the Pipeline
+Follow these steps to add your secrets to GitHub:
 
-Once configured, any push to the `develop` or `main` branches will trigger the automated build and deployment workflows defined in `.github/workflows`.
+1.  Navigate to your repository on **GitHub**.
+2.  Go to **Settings** → **Secrets and variables** → **Actions**.
+3.  Click **New repository secret**.
+4.  Add the following secrets:
+    *   `DOCKERHUB_USERNAME`: Your Docker Hub username.
+    *   `DOCKERHUB_TOKEN`: Your Docker Hub Access Token (with **Read & Write** permissions).
+    *   `GCP_PROJECT_ID`: Your Google Cloud Project ID.
+    *   `GCP_SA_KEY`: The **Base64 encoded** string of your Service Account JSON key.
+
+### 3. How to Base64 Encode your GCP Key
+
+Base64 encoding converts your complex JSON file into a single line of text that is safe to copy-paste into GitHub.
+
+**Do this in your terminal (do not upload the file!):**
+
+- **Windows (PowerShell)**:
+  ```powershell
+  $bytes = [IO.File]::ReadAllBytes("path/to/your-key.json")
+  [Convert]::ToBase64String($bytes)
+  ```
+- **Linux/macOS**:
+  ```bash
+  base64 -i path/to/your-key.json
+  ```
+
+**Security Reminder**: Once you have pasted the resulting string into GitHub, delete the local `.json` file or move it to a secure, private location outside of this repository.
+
+### 4. Trigger the Pipeline
+
+Once your secrets are configured, any push to the `develop` or `main` branches will automatically trigger the CI/CD workflows. You can see this in the **Actions** tab of your repository.
+
+---
+
+## 🤖 Testing the "Import Repo" Feature
+
+The **Onboarding Service** allows you to bring any Python repository into this standardized pipeline automatically.
+
+### How it works:
+1.  **Request**: You provide a GitHub Repo URL via the API or Dashboard.
+2.  **Injection**: The application uses your `GITHUB_TOKEN` to inject a standardized `.github/workflows/main.yml` into that repository.
+3.  **Trigger**: The commit itself triggers the shared workflow library, which will:
+    - **Fetch**: Pull the code.
+    - **Train**: Run `src/train.py` (if present).
+    - **Test**: Run `pytest`.
+    - **Deploy**: Build a Docker image and deploy it to your GKE cluster.
+
+### How to test:
+Run this command from your terminal (ensure your backend is running):
+
+```bash
+curl -X POST http://localhost:8000/onboard \
+     -H "Content-Type: application/json" \
+     -d '{
+           "repo_url": "https://github.com/USER/YOUR_TARGET_REPO",
+           "image_name": "your-dockerhub-user/new-app-image"
+         }'
+```
 
 ---
 
