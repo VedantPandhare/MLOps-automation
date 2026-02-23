@@ -22,7 +22,7 @@ on:
       - develop
 
 env:
-  IMAGE_NAME: vedantpandhare/fraud-detection
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
   HELM_RELEASE: fraud-detection
   GKE_CLUSTER: ml-cluster
   GKE_ZONE: us-central1-a
@@ -43,7 +43,7 @@ jobs:
     if: github.event_name == 'push'
     uses: ./.github/workflows/docker-build.yml
     with:
-      image-name: vedantpandhare/fraud-detection
+      image-name: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
       dockerfile-path: "ml-app-repo/Dockerfile"
       build-context: "ml-app-repo"
       registry: dockerhub
@@ -95,7 +95,8 @@ jobs:
   notify:
     name: 📣 Notify Slack
     needs: [docker-build, deploy-staging, deploy-production]
-    if: always() && github.event_name == 'push'
+    # Disabled until SLACK_WEBHOOK_URL is configured
+    if: false && always() && github.event_name == 'push'
     uses: ./.github/workflows/notify-slack.yml
     with:
       status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}

@@ -40,7 +40,7 @@ COPY --from=builder /root/.local /home/mlapp/.local
 # Copy application code
 COPY app/ ./app/
 COPY src/ ./src/
-COPY models/ ./models/ 2>/dev/null || true
+COPY models/ ./models/
 
 # Set environment variables
 ENV PATH=/home/mlapp/.local/bin:$PATH \
