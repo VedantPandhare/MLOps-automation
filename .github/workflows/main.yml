@@ -22,7 +22,7 @@ on:
       - develop
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
+  IMAGE_NAME: vedantpandhare007/fraud-detection
   HELM_RELEASE: fraud-detection
   GKE_CLUSTER: ml-cluster
   GKE_ZONE: us-central1-a
@@ -43,7 +43,7 @@ jobs:
     if: github.event_name == 'push'
     uses: ./.github/workflows/docker-build.yml
     with:
-      image-name: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detection
+      image-name: vedantpandhare007/fraud-detection
       dockerfile-path: "ml-app-repo/Dockerfile"
       build-context: "ml-app-repo"
       registry: dockerhub
@@ -104,4 +104,4 @@ jobs:
       environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
     secrets:
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || 'disabled' }}
