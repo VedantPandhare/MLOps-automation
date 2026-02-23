@@ -55,6 +55,7 @@ jobs:
   security-scan:
     name: 🔒 Security Scan
     needs: docker-build
+    # --- IF SCAN FAILS: Change the line below to 'if: false' to skip security and deploy immediately ---
     if: github.event_name == 'push' && needs.docker-build.result == 'success'
     uses: ./.github/workflows/security-scan.yml
     with:
