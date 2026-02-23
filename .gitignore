@@ -17,9 +17,7 @@ env/
 *.env
 
 # ML artifacts
-models/
 data/
-*.pkl
 *.joblib
 mlruns/
 .dvc/cache/
