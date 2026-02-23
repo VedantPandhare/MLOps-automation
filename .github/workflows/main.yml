@@ -43,13 +43,13 @@ jobs:
     if: github.event_name == 'push'
     uses: ./.github/workflows/docker-build.yml
     with:
-      image-name: vedantpandhare007/fraud-detection
+      image-name: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/ml-repo/fraud-detection
       dockerfile-path: "ml-app-repo/Dockerfile"
       build-context: "ml-app-repo"
-      registry: dockerhub
+      registry: gcr
+      gcp-region: us-central1
     secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
 
   # ─── CI: Job 3 — Security Scan ───────────────────────────────────────────────
   security-scan:
