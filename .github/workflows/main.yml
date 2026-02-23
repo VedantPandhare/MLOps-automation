@@ -55,6 +55,7 @@ jobs:
   security-scan:
     name: 🔒 Security Scan
     needs: docker-build
+    if: github.event_name == 'push' && needs.docker-build.result == 'success'
     uses: ./.github/workflows/security-scan.yml
     with:
       image-ref: ${{ needs.docker-build.outputs.image-tag }}
