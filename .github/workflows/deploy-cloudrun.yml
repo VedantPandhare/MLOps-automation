@@ -1,0 +1,70 @@
+name: Reusable - Deploy to Cloud Run
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deployment environment (staging or production)"
+        required: true
+        type: string
+      service-name:
+        description: "Cloud Run service name"
+        required: true
+        type: string
+      image-tag:
+        description: "Docker image tag to deploy"
+        required: true
+        type: string
+      region:
+        description: "GCP region"
+        required: false
+        type: string
+        default: "us-central1"
+    secrets:
+      GCP_SA_KEY:
+        required: true
+      GCP_PROJECT_ID:
+        required: true
+    outputs:
+      service-url:
+        description: "The URL of the deployed Cloud Run service"
+        value: ${{ jobs.deploy.outputs.url }}
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      url: ${{ steps.deploy-service.outputs.url }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        id: deploy-service
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ inputs.service-name }}-${{ inputs.environment }}
+          image: ${{ inputs.image-tag }}
+          region: ${{ inputs.region }}
+          # Allow unauthenticated access for now
+          flags: --allow-unauthenticated --port=8000
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "## Cloud Run Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** ${{ inputs.service-name }}-${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ steps.deploy-service.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.deploy-service.outcome }}" >> $GITHUB_STEP_SUMMARY

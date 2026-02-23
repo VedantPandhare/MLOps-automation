@@ -66,15 +66,12 @@ jobs:
     name: 🚀 Deploy → Staging
     needs: [security-scan, docker-build]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    uses: ./.github/workflows/deploy-k8s.yml
+    uses: ./.github/workflows/deploy-cloudrun.yml
     with:
       environment: staging
-      helm-release-name: fraud-detection
-      helm-chart-path: "ml-app-repo/helm/ml-app"
+      service-name: fraud-detection
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
-      gke-cluster: ml-cluster
-      gke-zone: us-central1-a
-      replicas: "1"
+      region: us-central1
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -84,17 +81,12 @@ jobs:
     name: 🏭 Deploy → Production
     needs: [security-scan, docker-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    # This environment has a required reviewer configured in GitHub Settings
-    # The pipeline will PAUSE here until a human approves
-    uses: ./.github/workflows/deploy-k8s.yml
+    uses: ./.github/workflows/deploy-cloudrun.yml
     with:
       environment: production
-      helm-release-name: fraud-detection
-      helm-chart-path: "ml-app-repo/helm/ml-app"
+      service-name: fraud-detection
       image-tag: ${{ needs.docker-build.outputs.image-tag }}
-      gke-cluster: ml-cluster
-      gke-zone: us-central1-a
-      replicas: "3"
+      region: us-central1
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
