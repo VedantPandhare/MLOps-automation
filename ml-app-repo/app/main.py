@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 
-from schemas import (
+from app.schemas import (
     PredictionRequest,
     PredictionResponse,
     BatchPredictionRequest,
@@ -23,7 +23,7 @@ from schemas import (
     OnboardRequest,
     OnboardResponse,
 )
-from onboarding import GithubOnboardingService
+from app.onboarding import GithubOnboardingService
 
 # Add src to path for imports
 import sys
