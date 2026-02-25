@@ -15,7 +15,12 @@ export const metadata = {
   title: "Conduit - Mlops automation",
   description: "End-to-end MLops automation platform",
   icons: {
-    icon: "/favicon.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon1.png", type: "image/png" },
+      { url: "/Conduit_logo.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-icon.png",
   },
 };
 
