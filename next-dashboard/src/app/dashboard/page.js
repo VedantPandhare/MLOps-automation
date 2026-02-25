@@ -265,6 +265,7 @@ function InferenceDemo() {
     failed_attempts_24h: 0,
   });
   const [loading, setLoading] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
@@ -276,16 +277,26 @@ function InferenceDemo() {
   const runPrediction = async () => {
     setLoading(true);
     setError(null);
+    setIsWakingUp(false);
+
+    // Waking up usually takes ~10-45s for Render cold start. Let's show the user a message after 2.5s
+    const slowTimer = setTimeout(() => setIsWakingUp(true), 2500);
+
     try {
       const response = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
+      clearTimeout(slowTimer);
+      setIsWakingUp(false);
+
       if (!response.ok) throw new Error('Prediction request failed');
       const data = await response.json();
       setResult(data);
     } catch (err) {
+      clearTimeout(slowTimer);
+      setIsWakingUp(false);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -312,8 +323,13 @@ function InferenceDemo() {
             </div>
           ))}
         </div>
-        <button className="btn btn-primary" onClick={runPrediction} disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '1rem' }}>
-          {loading ? <Loader2 className="animate-spin" size={20} /> : 'Process Transaction'}
+        <button className="btn btn-primary" onClick={runPrediction} disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '1rem', flexDirection: 'column', height: isWakingUp ? 'auto' : undefined, gap: '0.5rem' }}>
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" size={20} />
+              {isWakingUp && <span style={{ fontSize: '0.65rem', opacity: 0.8, textTransform: 'none', letterSpacing: '0' }}>Waking up the backend servers... This might take up to a minute.</span>}
+            </>
+          ) : 'Process Transaction'}
         </button>
       </div>
 
@@ -358,6 +374,16 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [stats, setStats] = useState({ accuracy: 0, f1: 0, latency: 0, drift: 0 });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('action') === 'import') {
+        setIsModalOpen(true);
+        window.history.replaceState({}, '', '/dashboard');
+      }
+    }
+  }, []);
   const [modelInfo, setModelInfo] = useState({ version: '...', environment: '...' });
   const [healthStatus, setHealthStatus] = useState('Offline');
   const [chartData, setChartData] = useState([]);

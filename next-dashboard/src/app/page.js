@@ -387,11 +387,17 @@ const StatItem = ({
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const [showEntryModal, setShowEntryModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     const onScroll = () => setScrollY(window.scrollY);
     window.addEventListener("scroll", onScroll, { passive: true });
+
+    // Wake up the backend immediately upon page load
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    fetch(`${API_BASE_URL}/health`).catch(() => { });
+
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -766,7 +772,7 @@ export default function LandingPage() {
           <li><a href="#pipeline">Pipeline</a></li>
           <li><a href="#features">Features</a></li>
           <li><a href={GITHUB_LINK} target="_blank" rel="noreferrer">GitHub</a></li>
-          <li><a href={DASHBOARD_LINK} className="nav-cta">Dashboard</a></li>
+          <li><button onClick={() => setShowEntryModal(true)} className="nav-cta" style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Dashboard</button></li>
         </ul>
       </nav>
 
@@ -793,12 +799,12 @@ export default function LandingPage() {
         </p>
 
         <div className="btn-group">
-          <a href={DASHBOARD_LINK} className="btn-primary" style={{ textDecoration: 'none' }}>
+          <button onClick={() => setShowEntryModal(true)} className="btn-primary" style={{ textDecoration: 'none' }}>
             <span>Get Started</span>
             <svg className="arrow" width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </a>
+          </button>
           <a href="#features" className="btn-ghost">
             Explore Features
           </a>
@@ -964,12 +970,12 @@ export default function LandingPage() {
           that's as rigorous as your research.
         </p>
         <div className="btn-group">
-          <a href={DASHBOARD_LINK} className="btn-primary" style={{ textDecoration: 'none' }}>
+          <button onClick={() => setShowEntryModal(true)} className="btn-primary" style={{ textDecoration: 'none' }}>
             <span>Get Started</span>
             <svg className="arrow" width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </a>
+          </button>
           <a
             href={GITHUB_LINK}
             className="btn-ghost"
@@ -993,6 +999,59 @@ export default function LandingPage() {
           <span style={{ color: "rgba(255,255,255,0.1)" }}>© 2026</span>
         </div>
       </footer>
+
+      {/* ── ENTRY MODAL ── */}
+      {showEntryModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.8)", backdropFilter: "blur(5px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999
+        }}>
+          <div className="animate-fade-in" style={{
+            background: "#0e0e0e", border: "1px solid rgba(255,255,255,0.1)",
+            padding: "2.5rem 2rem", borderRadius: "8px", maxWidth: "440px", width: "90%",
+            textAlign: "center", position: "relative", boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
+          }}>
+            <button
+              onClick={() => setShowEntryModal(false)}
+              style={{ position: "absolute", top: "1.2rem", right: "1.5rem", background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "1.5rem" }}
+            >
+              ✕
+            </button>
+            <div style={{
+              width: "48px", height: "48px", borderRadius: "50%", background: "rgba(255,255,255,0.05)",
+              display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem",
+              border: "1px solid rgba(255,255,255,0.1)"
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.8rem", marginBottom: "0.5rem", color: "rgba(255,255,255,0.9)", fontWeight: 400 }}>Choose Your Path</h3>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "rgba(255,255,255,0.4)", marginBottom: "2rem", fontWeight: 300, lineHeight: 1.6 }}>
+              Explore our live demo or bring your own ML repository for automated lifecycle management.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <button
+                onClick={() => window.location.href = DASHBOARD_LINK}
+                className="btn-primary"
+                style={{ width: "100%", justifyContent: "center", padding: "1.2rem" }}
+              >
+                See the Demo Model
+              </button>
+              <button
+                onClick={() => window.location.href = DASHBOARD_LINK + "?action=import"}
+                className="btn-ghost"
+                style={{ width: "100%", justifyContent: "center", padding: "1.2rem" }}
+              >
+                Import Github ML Repository
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
