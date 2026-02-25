@@ -23,8 +23,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from 'recharts';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -101,21 +99,19 @@ function OnboardingModal({ isOpen, onClose }) {
 
 function StatCard({ label, value, unit, trend, icon }) {
   return (
-    <div className="card stat-card">
-      <div className="stat-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{ color: 'var(--text-secondary)' }}>{icon}</div>
-          <span className="stat-label">{label}</span>
-        </div>
+    <div className="card" style={{ padding: '1.5rem', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <div style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>{icon}</div>
         {trend && (
-          <span style={{ fontSize: '0.75rem', color: trend.startsWith('+') ? 'var(--accent-green)' : 'var(--accent-blue)', fontWeight: 600 }}>
+          <span style={{ fontSize: '0.65rem', color: trend.startsWith('+') || trend.includes('↑') ? 'var(--accent-green)' : 'var(--accent-blue)', fontWeight: 600, fontFamily: "'DM Mono', monospace" }}>
             {trend}
           </span>
         )}
       </div>
-      <div className="stat-value">
-        {value}
-        <span className="stat-unit">{unit}</span>
+      <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, marginBottom: '0.4rem' }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+        <span style={{ fontSize: '2rem', fontWeight: 600, fontFamily: "'DM Mono', monospace" }}>{value}</span>
+        <span style={{ fontSize: '0.75rem', opacity: 0.4, fontFamily: "'DM Mono', monospace" }}>{unit}</span>
       </div>
     </div>
   );
@@ -134,13 +130,12 @@ function InfrastructureItem({ icon, name, status }) {
 }
 
 function PipelineView() {
-  const [activeStep, setActiveStep] = useState(4);
   const stages = [
     { id: "test", label: "Run Tests", icon: <CheckCircle2 size={18} />, duration: "1m 42s", status: 'success' },
     { id: "build", label: "Docker Build", icon: <CheckCircle2 size={18} />, duration: "3m 11s", status: 'success' },
     { id: "scan", label: "Security Scan", icon: <CheckCircle2 size={18} />, duration: "0m 58s", status: 'success' },
     { id: "staging", label: "Deploy Staging", icon: <CheckCircle2 size={18} />, duration: "2m 05s", status: 'success' },
-    { id: "prod", label: "Deploy Prod", icon: <Loader2 size={18} className="animate-spin" />, duration: "2m 33s", status: 'running' },
+    { id: "prod", label: "Deploy Prod", icon: <Loader2 size={18} />, duration: "2m 33s", status: 'running' },
   ];
 
   return (
@@ -154,12 +149,13 @@ function PipelineView() {
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--accent-orange)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 10px currentColor' }} />
+            <div className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 10px currentColor' }} />
             Pipeline Running
           </div>
         </div>
 
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          {/* Base Connection Line */}
           <div style={{ position: 'absolute', top: '24px', left: '40px', right: '40px', height: '1px', background: 'rgba(255,255,255,0.08)', zIndex: 0 }} />
 
           {stages.map((stage, i) => {
@@ -167,16 +163,17 @@ function PipelineView() {
             const isInProgress = stage.status === 'running';
 
             return (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', zIndex: 1, flex: 1 }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', zIndex: 1, flex: 1, position: 'relative' }}>
                 <div style={{
                   width: '48px', height: '48px', borderRadius: '50%',
                   background: isCompleted ? 'rgba(34, 197, 94, 0.05)' : isInProgress ? 'rgba(59, 130, 246, 0.05)' : 'rgba(14,14,14,0.8)',
                   border: `2px solid ${isCompleted ? 'var(--accent-green)' : isInProgress ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.4s ease',
-                  boxShadow: isInProgress ? '0 0 20px rgba(59, 130, 246, 0.2)' : 'none'
+                  boxShadow: isInProgress ? '0 0 20px rgba(59, 130, 246, 0.3)' : 'none',
+                  color: isCompleted ? 'var(--accent-green)' : isInProgress ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)'
                 }}>
-                  {isCompleted ? <span style={{ color: 'var(--accent-green)' }}>✓</span> : isInProgress ? <span style={{ color: 'var(--accent-blue)' }} className="animate-spin">◌</span> : <span>○</span>}
+                  {isCompleted ? <span>✓</span> : isInProgress ? <Loader2 className="animate-spin" size={20} /> : <span>○</span>}
                 </div>
 
                 <div style={{ textAlign: 'center' }}>
@@ -192,10 +189,12 @@ function PipelineView() {
                   </p>
                 </div>
 
-                {i < stages.length - 1 && isCompleted && (
+                {/* Progress line to next stage */}
+                {i < stages.length - 1 && (
                   <div style={{
-                    position: 'absolute', top: '24px', left: '50%', width: '100%', height: '2px',
-                    background: 'var(--accent-green)', zIndex: -1, opacity: 0.6
+                    position: 'absolute', top: '24px', left: 'calc(50% + 24px)', width: 'calc(100% - 48px)', height: '2px',
+                    background: isCompleted ? 'var(--accent-green)' : 'transparent',
+                    zIndex: -1, opacity: 0.6
                   }} />
                 )}
               </div>
@@ -257,6 +256,16 @@ jobs:
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .pulse-dot {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .5; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -579,8 +588,8 @@ export default function Dashboard() {
       <GrainOverlay />
 
       <header className="header" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(14, 14, 14, 0.8)', backdropFilter: 'blur(20px)', position: 'relative', zIndex: 50 }}>
-        <div className="header-inner">
-          <div className="logo-area">
+        <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2rem', height: '80px' }}>
+          <div className="logo-area" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div className="logo-icon" style={{
               width: '32px', height: '32px', border: '1px solid rgba(59, 130, 246, 0.5)',
               background: 'rgba(59, 130, 246, 0.05)', borderRadius: '4px',
@@ -589,30 +598,40 @@ export default function Dashboard() {
               <Zap size={18} color="#3b82f6" fill="#3b82f6" style={{ opacity: 0.8 }} />
             </div>
             <div className="logo-text">
-              <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, letterSpacing: '0.02em' }}>Conduit</h1>
-              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.5 }}>MLOps Control Tower</p>
+              <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, letterSpacing: '0.02em', margin: 0 }}>Conduit</h1>
+              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.15em', opacity: 0.3, margin: 0 }}>MLOps Control Tower</p>
             </div>
           </div>
 
-          <nav className="nav">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
+          <nav style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+            {tabs.map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 1.2rem',
+                    borderRadius: '6px', border: 'none', cursor: 'pointer',
+                    background: isActive ? '#fff' : 'transparent',
+                    color: isActive ? '#000' : 'rgba(255,255,255,0.5)',
+                    transition: 'all 0.2s ease',
+                    fontFamily: isActive ? "'Syne', sans-serif" : "'DM Mono', monospace",
+                    fontSize: '0.85rem', fontWeight: isActive ? 600 : 400
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#fff'; } }}
+                  onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; } }}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
-          <div className="header-actions">
-            <div className="status-badge">
-              <div className="status-dot" style={{ background: healthStatus === 'Operational' ? 'var(--accent-green)' : 'var(--accent-red)' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{healthStatus}</span>
-            </div>
-            <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }} onClick={() => setIsModalOpen(true)}>Environments</button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.6rem', fontFamily: "'DM Mono', monospace", letterSpacing: '0.15em', color: healthStatus === 'Operational' ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 700 }}>{healthStatus.toUpperCase()}</span>
+            <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', background: '#fff', color: '#000', border: 'none' }} onClick={() => setIsModalOpen(true)}>Environments</button>
           </div>
         </div>
       </header>
@@ -627,9 +646,9 @@ export default function Dashboard() {
           animation: 'ticker 40s linear infinite',
           width: 'max-content',
           fontFamily: "'DM Mono', monospace",
-          fontSize: '0.65rem',
+          fontSize: '0.6rem',
           letterSpacing: '0.1em',
-          color: 'rgba(255,255,255,0.25)',
+          color: 'rgba(255,255,255,0.2)',
           textTransform: 'uppercase'
         }}>
           {[...Array(2)].flatMap(() => [
@@ -654,23 +673,27 @@ export default function Dashboard() {
         }
       `}</style>
 
-      <main className="main-content">
+      <main className="main-content" style={{ padding: '2.5rem' }}>
         {activeTab === 'overview' && (
-          <div className="grid animate-fade-in">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                <StatCard label="Accuracy" value={stats.accuracy.toFixed(1)} unit="%" trend="+0.2%" icon={<CheckCircle2 size={18} />} />
-                <StatCard label="F1 Score" value={stats.f1.toFixed(1)} unit="%" trend="+0.5%" icon={<Search size={18} />} />
-                <StatCard label="Latency" value={stats.latency} unit="ms" icon={<Zap size={18} />} />
-                <StatCard label="Drift" value={stats.drift} unit="" trend={`${stats.drift > 0.1 ? '↑' : '↓'}`} icon={<AlertCircle size={18} />} />
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
+              <StatCard label="Accuracy" value={stats.accuracy.toFixed(1)} unit="%" trend="+0.2%" icon={<CheckCircle2 size={16} />} />
+              <StatCard label="F1 Score" value={stats.f1.toFixed(1)} unit="%" trend="+0.5%" icon={<Search size={16} />} />
+              <StatCard label="Latency" value={stats.latency} unit="ms" trend="↓ 1.2ms" icon={<Zap size={16} />} />
+              <StatCard label="Drift" value={stats.drift} unit="" trend={stats.drift > 0.1 ? '↑ Critical' : '↓ Normal'} icon={<AlertCircle size={16} />} />
+            </div>
 
-              <div className="card chart-card">
-                <div className="section-header">
-                  <h3 className="section-title">Performance Retention</h3>
-                  <div className="chart-legend">
-                    <div className="legend-item"><div className="legend-dot blue"></div> Accuracy</div>
-                    <div className="legend-item"><div className="legend-dot green"></div> F1 Score</div>
+            <div className="grid" style={{ gridTemplateColumns: '1.8fr 1fr', gap: '2rem' }}>
+              <div className="card" style={{ padding: '2rem' }}>
+                <div className="section-header" style={{ marginBottom: '2rem' }}>
+                  <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600 }}>Performance Retention</h3>
+                  <div style={{ display: 'flex', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Mono', monospace" }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-blue)' }} /> Accuracy
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Mono', monospace" }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-green)' }} /> F1 Score
+                    </div>
                   </div>
                 </div>
                 <div style={{ width: '100%', height: '300px' }}>
@@ -678,7 +701,7 @@ export default function Dashboard() {
                     <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.2} />
+                          <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.15} />
                           <stop offset="95%" stopColor="var(--accent-blue)" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="f1Grad" x1="0" y1="0" x2="0" y2="1">
@@ -687,51 +710,44 @@ export default function Dashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[85, 100]} tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="date" tick={{ fill: '#71717a', fontSize: 10, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[85, 100]} tick={{ fill: '#71717a', fontSize: 10, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px', fontSize: '0.8rem' }}
+                        contentStyle={{ background: '#0e0e0e', border: '1px solid #3f3f46', borderRadius: '4px', fontSize: '0.75rem', fontFamily: "'DM Mono', monospace" }}
                         itemStyle={{ color: '#fafafa' }}
                       />
-                      <Area type="monotone" dataKey="accuracy" name="Accuracy" stroke="var(--accent-blue)" fill="url(#accGrad)" strokeWidth={2.5} dot={false} />
-                      <Area type="monotone" dataKey="f1" name="F1 Score" stroke="var(--accent-green)" fill="url(#f1Grad)" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                      <Area type="monotone" dataKey="accuracy" stroke="var(--accent-blue)" fill="url(#accGrad)" strokeWidth={2} dot={false} />
+                      <Area type="monotone" dataKey="f1" stroke="var(--accent-green)" fill="url(#f1Grad)" strokeWidth={2} dot={false} strokeDasharray="4 4" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div className="card">
-                <div className="section-header">
-                  <h3 className="section-title">Engine Health</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div className="card" style={{ padding: '2rem' }}>
+                  <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.4rem', fontWeight: 600, marginBottom: '1.5rem' }}>Engine Health</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <InfrastructureItem icon={<Globe size={14} />} name="Edge Proxies" status="Operational" />
+                    <InfrastructureItem icon={<Cpu size={14} />} name="Compute Nodes" status="Operational" />
+                    <InfrastructureItem icon={<Settings2 size={14} />} name="MLflow Engine" status={healthStatus} />
+                    <InfrastructureItem icon={<RefreshCw size={14} />} name="DVC Sync" status="Operational" />
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <InfrastructureItem icon={<Globe size={16} />} name="Edge Proxies" status="Operational" />
-                  <InfrastructureItem icon={<Cpu size={16} />} name="Compute Nodes" status="Operational" />
-                  <InfrastructureItem icon={<Settings2 size={16} />} name="MLflow Engine" status={healthStatus} />
-                  <InfrastructureItem icon={<RefreshCw size={16} />} name="DVC Sync" status="Operational" />
-                </div>
-              </div>
 
-              <div className="card" style={{ flex: 1 }}>
-                <h3 className="section-title" style={{ marginBottom: '1rem' }}>Model Details</h3>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <span>Version</span>
-                    <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>{modelInfo.version}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <span>Environment</span>
-                    <span style={{ color: 'var(--text-primary)' }}>{modelInfo.environment}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <span>Framework</span>
-                    <span style={{ color: 'var(--text-primary)' }}>Scikit-Learn</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Last Retrain</span>
-                    <span style={{ color: 'var(--text-primary)' }}>12h ago</span>
+                <div className="card" style={{ padding: '2rem', flex: 1 }}>
+                  <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.4rem', fontWeight: 600, marginBottom: '1.5rem' }}>Model Identity</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {[
+                      { l: "Registry Version", v: modelInfo.version, c: 'var(--accent-blue)' },
+                      { l: "Environment", v: modelInfo.environment, c: '#fff' },
+                      { l: "Architecture", v: "Scikit-Learn Ensemble", c: '#fff' },
+                      { l: "Last Push", v: "12h 45m ago", c: '#fff' }
+                    ].map((item, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontFamily: "'DM Mono', monospace" }}>{item.l}</span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: item.c, fontFamily: "'DM Mono', monospace" }}>{item.v}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
