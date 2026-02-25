@@ -77,21 +77,132 @@ const GrainOverlay = () => {
 };
 
 function OnboardingModal({ isOpen, onClose }) {
+  const [step, setStep] = useState(0);
+  const [repoUrl, setRepoUrl] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [statusMsg, setStatusMsg] = useState('Initializing analysis...');
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStep(0);
+      setRepoUrl('');
+      setProgress(0);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (step === 2) {
+      const messages = [
+        "Scanning repository structure...",
+        "Identifying ML framework...",
+        "Analyzing environment dependencies...",
+        "Validating CI/CD workflow compatibility...",
+        "Profiling model orchestration parameters...",
+        "Optimizing cloud deployment manifests...",
+        "Finalizing configuration..."
+      ];
+
+      let curMsgIdx = 0;
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setTimeout(() => setStep(3), 500);
+            return 100;
+          }
+          const next = prev + Math.random() * 15;
+          if (next > (curMsgIdx + 1) * (100 / messages.length)) {
+            curMsgIdx = Math.min(curMsgIdx + 1, messages.length - 1);
+            setStatusMsg(messages[curMsgIdx]);
+          }
+          return Math.min(next, 100);
+        });
+      }, 600);
+      return () => clearInterval(interval);
+    }
+  }, [step]);
+
   if (!isOpen) return null;
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)'
     }}>
-      <div className="card animate-fade-in" style={{ maxWidth: '500px', width: '90%', padding: '3rem', position: 'relative' }}>
+      <div className="card animate-fade-in" style={{ maxWidth: '500px', width: '90%', padding: '3rem', position: 'relative', overflow: 'hidden' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer' }}>✕</button>
-        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Welcome to Conduit</h2>
-        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '2.5rem', lineHeight: 1.6 }}>Choose an environment to begin your MLOps workflow simulation.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <button className="btn btn-primary" style={{ width: '100%', padding: '1.2rem' }} onClick={onClose}>Explore Demo Model</button>
-          <button className="btn btn-secondary" style={{ width: '100%', padding: '1.2rem' }} onClick={onClose}>Import GitHub Repository</button>
-        </div>
+
+        {step === 0 && (
+          <>
+            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Welcome to Conduit</h2>
+            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '2.5rem', lineHeight: 1.6 }}>Choose an environment to begin your MLOps workflow simulation.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <button className="btn btn-primary" style={{ width: '100%', padding: '1.2rem' }} onClick={onClose}>Explore Demo Model</button>
+              <button className="btn btn-secondary" style={{ width: '100%', padding: '1.2rem', borderColor: 'rgba(255,255,255,0.1)' }} onClick={() => setStep(1)}>Import GitHub Repository</button>
+            </div>
+          </>
+        )}
+
+        {step === 1 && (
+          <>
+            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Import Repository</h2>
+            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '2rem', lineHeight: 1.6 }}>Enter your ML repository link to automate its lifecycle.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="https://github.com/user/repo"
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                  style={{
+                    width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)',
+                    padding: '1rem', borderRadius: '4px', color: '#fff',
+                    fontFamily: "'DM Mono', monospace", outline: 'none'
+                  }}
+                />
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '1.2rem' }}
+                onClick={() => setStep(2)}
+                disabled={!repoUrl}
+              >
+                Continue
+              </button>
+              <button className="btn btn-ghost" style={{ width: '100%', border: 'none', background: 'none', opacity: 0.5 }} onClick={() => setStep(0)}>Back</button>
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 600, marginBottom: '2rem' }}>Analyzing Repository</h2>
+
+            <div style={{ position: 'relative', width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', marginBottom: '1.5rem', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${progress}%`, background: 'var(--accent-blue)', transition: 'width 0.3s ease', boxShadow: '0 0 15px var(--accent-blue)' }} />
+            </div>
+
+            <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', minHeight: '1.2em' }}>{statusMsg}</p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '3rem' }}>
+              {[Globe, Cpu, Settings2, RefreshCw].map((Icon, i) => (
+                <Icon key={i} size={24} style={{ opacity: progress > (i + 1) * 20 ? 0.8 : 0.1, color: progress > (i + 1) * 20 ? 'var(--accent-blue)' : '#fff', transition: 'all 0.5s ease' }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid var(--accent-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+              <CheckCircle2 size={32} color="var(--accent-green)" />
+            </div>
+            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 600, marginBottom: '1rem' }}>Setup Complete</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem', lineHeight: 1.6 }}>Repository <strong>{repoUrl.split('/').pop()}</strong> has been successfully integrated into the control tower.</p>
+            <button className="btn btn-primary" style={{ width: '100%', padding: '1.2rem' }} onClick={onClose}>Go to Dashboard</button>
+          </div>
+        )}
       </div>
     </div>
   );
