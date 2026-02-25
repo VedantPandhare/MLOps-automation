@@ -1,16 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap');
+
 :root {
-  --bg-primary: #09090b;
-  --bg-secondary: #18181b;
-  --bg-card: #27272a;
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
+  --bg-primary: #0e0e0e;
+  --bg-secondary: rgba(255, 255, 255, 0.02);
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.4);
   --accent-blue: #3b82f6;
   --accent-green: #22c55e;
   --accent-orange: #f59e0b;
   --accent-red: #ef4444;
-  --border: #3f3f46;
-  --radius: 0.75rem;
-  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --border: rgba(255, 255, 255, 0.06);
+  --radius: 8px;
+  --font-family: 'DM Sans', -apple-system, sans-serif;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
