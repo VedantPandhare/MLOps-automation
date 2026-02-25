@@ -27,6 +27,16 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // --- Components ---
 
+const GrainOverlay = () => {
+  return (
+    <div style={{
+      position: "fixed", inset: 0, width: "100%", height: "100%",
+      pointerEvents: "none", zIndex: 1, opacity: 0.25,
+      background: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+    }} />
+  );
+};
+
 function OnboardingModal({ isOpen, onClose }) {
   const [repoUrl, setRepoUrl] = useState('');
   const [imageName, setImageName] = useState('');
@@ -176,35 +186,86 @@ function InfrastructureItem({ icon, name, status }) {
 }
 
 function PipelineView() {
+  const [activeStep, setActiveStep] = useState(3);
   const stages = [
-    { name: 'Data Ingestion', status: 'completed', time: '1m 20s' },
-    { name: 'Model Training', status: 'completed', time: '15m 45s' },
-    { name: 'Validation Metrics', status: 'completed', time: '2m 10s' },
-    { name: 'Security Audit', status: 'in-progress', time: '45s' },
-    { name: 'Production Deployment', status: 'pending', time: '-' },
+    { name: 'Run Tests', status: 'completed', time: '1m 42s' },
+    { name: 'Docker Build', status: 'completed', time: '3m 11s' },
+    { name: 'Security Scan', status: 'completed', time: '0m 58s' },
+    { name: 'Deploy Staging', status: 'in-progress', time: '2m 05s' },
+    { name: 'Deploy Prod', status: 'pending', time: '-' },
   ];
 
   return (
-    <div className="card animate-fade-in" style={{ height: '100%' }}>
-      <div className="section-header">
-        <h3 className="section-title">Workflow Execution</h3>
-        <span className="badge badge-blue">Run #1204</span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {stages.map((s, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '8px', background: s.status === 'in-progress' ? 'rgba(59, 130, 246, 0.05)' : 'transparent' }}>
-            <div style={{
-              width: 10, height: 10, borderRadius: '50%',
-              background: s.status === 'completed' ? 'var(--accent-green)' : s.status === 'in-progress' ? 'var(--accent-blue)' : 'var(--bg-card)',
-              boxShadow: s.status === 'in-progress' ? '0 0 10px var(--accent-blue)' : 'none'
-            }} />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '0.875rem', fontWeight: 600 }}>{s.name}</p>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{s.status}</p>
-            </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{s.time}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="card animate-fade-in" style={{ padding: '2rem' }}>
+        <div className="section-header" style={{ marginBottom: '2.5rem' }}>
+          <div>
+            <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600 }}>Current Pipeline Run</h3>
+            <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+              Triggered by push · branch: <span style={{ color: 'var(--accent-green)' }}>main</span> · 8m 31s elapsed
+            </p>
           </div>
-        ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-orange)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', fontFamily: "'DM Mono', monospace" }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 8px currentColor' }} />
+            In Progress
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative', padding: '0 1rem' }}>
+          {/* Connector Line */}
+          <div style={{ position: 'absolute', top: '20px', left: '10%', right: '10%', height: '2px', background: 'rgba(255,255,255,0.05)', zIndex: 0 }} />
+
+          {stages.map((s, i) => {
+            const isActive = s.status === 'in-progress';
+            const isCompleted = s.status === 'completed';
+            return (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', position: 'relative', zIndex: 1, flex: 1 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: isCompleted ? 'rgba(34, 197, 94, 0.1)' : isActive ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${isCompleted ? 'var(--accent-green)' : isActive ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: isActive ? '0 0 20px rgba(59, 130, 246, 0.2)' : 'none'
+                }}>
+                  {isCompleted ? <CheckCircle2 size={18} color="var(--accent-green)" /> : isActive ? <Loader2 size={18} className="animate-spin" color="var(--accent-blue)" /> : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />}
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: isCompleted || isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)', fontFamily: "'DM Mono', monospace" }}>{s.name}</p>
+                  <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', marginTop: '0.2rem', fontFamily: "'DM Mono', monospace" }}>{s.time}</p>
+                </div>
+                {/* Progress highlight for connector */}
+                {i < stages.length - 1 && i < activeStep && (
+                  <div style={{ position: 'absolute', top: '20px', left: '50%', width: '100%', height: '2px', background: 'linear-gradient(to right, var(--accent-green), rgba(34, 197, 94, 0.2))', zIndex: -1 }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="card animate-fade-in" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.2)' }}>
+        <div className="section-header" style={{ marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>Active Workflow · <span style={{ color: 'var(--accent-green)' }}>.github/workflows/main.yml</span></h3>
+        </div>
+        <pre style={{
+          margin: 0, padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px',
+          fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)',
+          lineHeight: 1.6, border: '1px solid var(--border)', overflowX: 'auto'
+        }}>
+          {`1  name: MLOps CI/CD Pipeline
+2  on:
+3  push:
+4  branches: [ main, develop ]
+5  jobs:
+6  test:
+7  uses: org/shared/.github/workflows/run-tests.yml@main
+8  build:
+9  needs: test
+10 uses: org/shared/.github/workflows/docker-build.yml@main
+11 deploy-prod:
+12 needs: build
+13 environment: production # Requires approval`}
+        </pre>
       </div>
     </div>
   );
@@ -212,40 +273,91 @@ function PipelineView() {
 
 function HistoryView() {
   const logs = [
-    { event: 'Production Rollout', version: 'v5.2.0', user: 'system', time: '2h ago', status: 'success' },
-    { event: 'Drift Alert', version: 'v5.1.0', user: 'evidently-ai', time: '5h ago', status: 'warning' },
-    { event: 'Automatic Retrain', version: 'v5.1.0', user: 'github-actions', time: '6h ago', status: 'success' },
-    { event: 'Health Check Fail', version: 'v5.0.1', user: 'monitoring', time: '1d ago', status: 'error' },
+    { commit: 'a3f7c91', branch: 'main', env: 'prod', actor: 'push', status: 'success', time: '2m ago' },
+    { commit: '88be204', branch: 'develop', env: 'staging', actor: 'push', status: 'success', time: '47m ago' },
+    { commit: 'f12d330', branch: 'feature/retrain', env: 'staging', actor: 'PR', status: 'failed', time: '3h ago' },
+    { commit: 'c90a17e', branch: 'main', env: 'prod', actor: 'push', status: 'success', time: '1d ago' },
+    { commit: '74bb819', branch: 'main', env: 'prod', actor: 'schedule', status: 'success', time: '3d ago' },
   ];
 
   return (
-    <div className="card animate-fade-in">
-      <div className="section-header">
-        <h3 className="section-title">Audit Log</h3>
-      </div>
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>EVENT</th>
-              <th>VERSION</th>
-              <th>ACTOR</th>
-              <th>TIMESTAMP</th>
-              <th>STATUS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log, i) => (
-              <tr key={i}>
-                <td style={{ fontWeight: 500 }}>{log.event}</td>
-                <td style={{ color: 'var(--accent-blue)', fontFamily: 'monospace' }}>{log.version}</td>
-                <td>{log.user}</td>
-                <td style={{ color: 'var(--text-secondary)' }}>{log.time}</td>
-                <td><span className={`badge badge-${log.status === 'success' ? 'green' : log.status === 'warning' ? 'orange' : 'red'}`}>{log.status}</span></td>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="card animate-fade-in" style={{ padding: '0' }}>
+        <div className="section-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', marginBottom: '0' }}>
+          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600 }}>Deployment History</h3>
+          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem', fontFamily: "'DM Mono', monospace" }}>5 RECENT DEPLOYS</span>
+        </div>
+        <div className="table-container">
+          <table style={{ background: 'transparent' }}>
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.01)' }}>
+                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>COMMIT</th>
+                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>BRANCH</th>
+                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>ENVIRONMENT</th>
+                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>TRIGGERED BY</th>
+                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>STATUS</th>
+                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>TIME</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {logs.map((log, i) => (
+                <tr key={i} style={{ transition: 'background 0.2s', cursor: 'default' }}>
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <span style={{ color: 'var(--accent-blue)', fontFamily: "'DM Mono', monospace", padding: '0.2rem 0.5rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '4px' }}>{log.commit}</span>
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Globe size={14} style={{ opacity: 0.3 }} /> {log.branch}
+                    </div>
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <span style={{
+                      padding: '0.2rem 0.6rem', background: log.env === 'prod' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(59, 130, 246, 0.05)',
+                      borderRadius: '99px', fontSize: '0.7rem', color: log.env === 'prod' ? 'var(--accent-green)' : 'var(--accent-blue)', border: '1px solid currentColor', opacity: 0.8
+                    }}>{log.env}</span>
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontFamily: "'DM Mono', monospace" }}>{log.actor}</td>
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: log.status === 'success' ? 'var(--accent-green)' : 'var(--accent-red)', fontSize: '0.75rem', fontWeight: 600 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
+                      {log.status}
+                    </div>
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>{log.time}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card animate-fade-in">
+        <div className="section-header" style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.25rem', fontWeight: 600 }}>MLflow Model Registry</h3>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+              <h4 style={{ fontSize: '1.1rem', color: 'var(--accent-green)', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>v2.4.1</h4>
+              <span style={{ padding: '0.1rem 0.5rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-green)', fontSize: '0.65rem', borderRadius: '4px', textTransform: 'uppercase' }}>Production</span>
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' }}>Registered on Feb 23, 10:45 AM</p>
+          </div>
+          <div style={{ display: 'flex', gap: '2.5rem' }}>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>Accuracy</p>
+              <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>93.2%</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>F1 Score</p>
+              <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>0.911</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>Run ID</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--accent-blue)', fontFamily: "'DM Mono', monospace" }}>run_88c2f</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -306,10 +418,10 @@ function InferenceDemo() {
   const riskColors = { MINIMAL: '#22c55e', LOW: '#3b82f6', MEDIUM: '#f59e0b', HIGH: '#ef4444', CRITICAL: '#7f1d1d' };
 
   return (
-    <div className="grid animate-fade-in" style={{ gridTemplateColumns: '1.5fr 1fr' }}>
-      <div className="card">
-        <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>Transaction Simulation</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+    <div className="grid animate-fade-in" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
+      <div className="card" style={{ padding: '2.5rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)' }}>
+        <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 600, marginBottom: '2rem' }}>Transaction Simulation</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '2rem' }}>
           {Object.entries(formData).map(([key, val]) => (
             <div key={key}>
               <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase' }}>{key.replace(/_/g, ' ')}</label>
@@ -318,12 +430,20 @@ function InferenceDemo() {
                 type="number"
                 value={val}
                 onChange={handleInputChange}
-                style={{ width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '0.5rem', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.875rem' }}
+                style={{
+                  width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)',
+                  padding: '0.7rem', borderRadius: '4px', color: 'var(--text-primary)',
+                  fontSize: '0.85rem', fontFamily: "'DM Mono', monospace", outline: 'none'
+                }}
               />
             </div>
           ))}
         </div>
-        <button className="btn btn-primary" onClick={runPrediction} disabled={loading} style={{ width: '100%', justifyContent: 'center', padding: '1rem', flexDirection: 'column', height: isWakingUp ? 'auto' : undefined, gap: '0.5rem' }}>
+        <button className="btn btn-primary" onClick={runPrediction} disabled={loading} style={{
+          width: '100%', justifyContent: 'center', padding: '1.2rem',
+          fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em',
+          background: 'rgba(255,255,255,0.9)', color: '#0e0e0e'
+        }}>
           {loading ? (
             <>
               <Loader2 className="animate-spin" size={20} />
@@ -333,34 +453,35 @@ function InferenceDemo() {
         </button>
       </div>
 
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <h3 className="section-title" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Analysis Result</h3>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'rgba(255,255,255,0.02)' }}>
+        <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, marginBottom: '2rem', textAlign: 'center' }}>Analysis Result</h3>
         {error ? (
           <div style={{ textAlign: 'center', color: 'var(--accent-red)' }}>
             <AlertCircle size={40} style={{ margin: '0 auto 1rem' }} />
-            <p>{error}</p>
+            <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.8rem' }}>{error}</p>
           </div>
         ) : result ? (
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              width: '120px', height: '120px', border: `4px solid ${riskColors[result.risk_level] || 'var(--border)'}`,
-              borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem',
-              boxShadow: `0 0 20px -5px ${riskColors[result.risk_level] || 'transparent'}`
+              width: '140px', height: '140px', border: `1px solid ${riskColors[result.risk_level] || 'var(--border)'}`,
+              borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem',
+              boxShadow: `0 0 40px -10px ${riskColors[result.risk_level] || 'transparent'}`,
+              background: 'rgba(255,255,255,0.01)'
             }}>
-              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{(result.fraud_probability * 100).toFixed(1)}%</span>
-              <span style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Fraud Risk</span>
+              <span style={{ fontSize: '2rem', fontWeight: 700, fontFamily: "'Cormorant Garamond', serif" }}>{(result.fraud_probability * 100).toFixed(1)}%</span>
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>Risk Index</span>
             </div>
-            <h4 style={{ color: riskColors[result.risk_level], fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>{result.is_fraud ? 'ALERT: FRAUD' : 'VERIFIED: SAFE'}</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              <p>Risk Level: <strong style={{ color: 'var(--text-primary)' }}>{result.risk_level}</strong></p>
-              <p>Latency: <strong style={{ color: 'var(--text-primary)' }}>{result.latency_ms.toFixed(2)}ms</strong></p>
-              <p>Model: <strong style={{ color: 'var(--text-primary)' }}>{result.model_version}</strong></p>
+            <h4 style={{ color: riskColors[result.risk_level], fontSize: '1.8rem', fontWeight: 600, marginBottom: '1rem', fontFamily: "'Cormorant Garamond', serif" }}>{result.is_fraud ? 'ALERT: FRAUD DETECTED' : 'VERIFIED: SYSTEM SAFE'}</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Mono', monospace" }}>
+              <p>RISK LEVEL: <strong style={{ color: 'var(--text-primary)' }}>{result.risk_level}</strong></p>
+              <p>LATENCY: <strong style={{ color: 'var(--text-primary)' }}>{result.latency_ms.toFixed(2)}ms</strong></p>
+              <p>MODEL: <strong style={{ color: 'var(--text-primary)' }}>{result.model_version}</strong></p>
             </div>
           </div>
         ) : (
-          <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <Zap size={40} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
-            <p>Ready for Processing</p>
+          <div style={{ textAlign: 'center', opacity: 0.3 }}>
+            <Zap size={60} style={{ margin: '0 auto 1.5rem', strokeWidth: 1 }} />
+            <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Ready for Processing</p>
           </div>
         )}
       </div>
@@ -441,38 +562,81 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="dashboard-container">
-      <header className="header">
+    <div className="dashboard-container" style={{ position: 'relative', overflow: 'hidden', background: '#0e0e0e' }}>
+      {/* Background Grid */}
+      <div
+        style={{
+          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)
+          `,
+          backgroundSize: "60px 60px",
+          maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%)",
+        }}
+      />
+      <GrainOverlay />
+
+      <header className="header" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(14, 14, 14, 0.8)', backdropFilter: 'blur(20px)', position: 'relative', zIndex: 50 }}>
         <div className="header-inner">
-          <div className="logo-area">
-            <div className="logo-icon"><Zap size={20} fill="white" /></div>
+          <div className="logo-area" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div className="logo-icon" style={{
+              width: '32px', height: '32px', border: '1px solid rgba(59, 130, 246, 0.5)',
+              background: 'rgba(59, 130, 246, 0.05)', borderRadius: '4px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Zap size={18} color="#3b82f6" fill="#3b82f6" style={{ opacity: 0.8 }} />
+            </div>
             <div className="logo-text">
-              <h1>Conduit</h1>
-              <p>Automated Pipeline Lifecycle</p>
+              <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, letterSpacing: '0.02em' }}>Conduit</h1>
+              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.5 }}>MLOps Control Tower</p>
             </div>
           </div>
 
-          <nav className="nav-tabs">
+          <nav className="nav-tabs" style={{ gap: '0.25rem' }}>
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab.id)}
+                style={{
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: '0.75rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  padding: '0.5rem 1rem',
+                  color: activeTab === tab.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
+                  background: activeTab === tab.id ? 'rgba(255,255,255,0.05)' : 'transparent',
+                  border: 'none',
+                  borderRadius: '4px',
+                  transition: 'all 0.3s ease'
+                }}
               >
-                {tab.icon}
                 {tab.label}
               </button>
             ))}
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            <button className="btn btn-outline" style={{ border: '1px solid var(--border)' }} onClick={() => setIsModalOpen(true)}>
-              <Plus size={16} />
+            <button className="btn btn-outline" style={{
+              border: '1px solid var(--border)',
+              fontFamily: "'DM Mono', monospace",
+              fontSize: '0.7rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              padding: '0.4rem 0.8rem'
+            }} onClick={() => setIsModalOpen(true)}>
+              <Plus size={14} />
               New Repo
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '0.8125rem', color: healthStatus === 'Operational' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.625rem',
+              fontSize: '0.7rem', fontFamily: "'DM Mono', monospace",
+              color: healthStatus === 'Operational' ? 'var(--accent-green)' : 'var(--accent-red)',
+              textTransform: 'uppercase'
+            }}>
               <div style={{
-                width: 8, height: 8, borderRadius: '50%', background: 'currentColor',
+                width: 6, height: 6, borderRadius: '50%', background: 'currentColor',
                 boxShadow: healthStatus === 'Operational' ? '0 0 10px currentColor' : 'none'
               }} />
               {healthStatus}
@@ -485,33 +649,55 @@ export default function Dashboard() {
         {activeTab === 'overview' && (
           <div className="grid animate-fade-in">
             <div className="grid stats-grid">
-              <div className="card stat-card">
-                <p className="stat-label">Model Accuracy</p>
-                <h2 className="stat-value">{stats.accuracy.toFixed(1)}%</h2>
-                <p className="stat-footer text-up"><TrendingUp size={12} /> Live Production</p>
+              <div className="card stat-card" style={{
+                borderTop: '2px solid var(--accent-blue)',
+                background: 'rgba(255,255,255,0.01)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                <p className="stat-label" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Model Accuracy</p>
+                <h2 className="stat-value" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 300 }}>{stats.accuracy.toFixed(1)}%</h2>
+                <p className="stat-footer text-up" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.05em' }}><TrendingUp size={12} /> Live Production</p>
               </div>
-              <div className="card stat-card">
-                <p className="stat-label">F1-Score</p>
-                <h2 className="stat-value">{stats.f1.toFixed(1)}%</h2>
-                <p className="stat-footer" style={{ color: 'var(--text-secondary)' }}>Baseline 90.0%</p>
+              <div className="card stat-card" style={{
+                borderTop: '2px solid var(--accent-green)',
+                background: 'rgba(255,255,255,0.01)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                <p className="stat-label" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>F1-Score</p>
+                <h2 className="stat-value" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 300 }}>{stats.f1.toFixed(1)}%</h2>
+                <p className="stat-footer" style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.05em' }}>Baseline 90.0%</p>
               </div>
-              <div className="card stat-card">
-                <p className="stat-label">Inference Latency</p>
-                <h2 className="stat-value">{stats.latency}ms</h2>
-                <p className="stat-footer text-down"><Activity size={12} /> Optimization Active</p>
+              <div className="card stat-card" style={{
+                background: 'rgba(255,255,255,0.01)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                <p className="stat-label" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Inference Latency</p>
+                <h2 className="stat-value" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 300 }}>{stats.latency}ms</h2>
+                <p className="stat-footer text-down" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.05em' }}><Activity size={12} /> Optimization Active</p>
               </div>
-              <div className="card stat-card">
-                <p className="stat-label">Data Drift (PSI)</p>
-                <h2 className="stat-value">{stats.drift}</h2>
-                <p className="stat-footer" style={{ color: 'var(--text-secondary)' }}><ShieldCheck size={12} /> Below Threshold</p>
+              <div className="card stat-card" style={{
+                background: 'rgba(255,255,255,0.01)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                <p className="stat-label" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Data Drift (PSI)</p>
+                <h2 className="stat-value" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 300 }}>{stats.drift}</h2>
+                <p className="stat-footer" style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.05em' }}><ShieldCheck size={12} /> Below Threshold</p>
               </div>
             </div>
 
             <div className="grid" style={{ gridTemplateColumns: '2.5fr 1fr' }}>
-              <div className="card chart-card">
+              <div className="card chart-card" style={{ background: 'rgba(0,0,0,0.2)' }}>
                 <div className="section-header">
-                  <h3 className="section-title">Performance Retention</h3>
-                  <div className="badge badge-blue">Last 15 Cycles</div>
+                  <h3 className="section-title" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem' }}>Performance Retention</h3>
+                  <div className="badge badge-blue" style={{ fontFamily: "'DM Mono', monospace" }}>Last 15 Cycles</div>
                 </div>
                 <div style={{ height: '320px', width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
