@@ -6,21 +6,25 @@ import {
   Settings2,
   Search,
   History,
-  Activity,
-  Plus,
-  Zap,
-  ShieldCheck,
-  TrendingUp,
-  Cpu,
-  RefreshCw,
-  Globe,
-  X,
-  Loader2,
+  AlertCircle,
   CheckCircle2,
-  AlertCircle
+  Loader2,
+  Zap,
+  History as HistoryIcon,
+  Globe,
+  RefreshCw,
+  Cpu,
 } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
 } from 'recharts';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -75,137 +79,44 @@ const GrainOverlay = () => {
 };
 
 function OnboardingModal({ isOpen, onClose }) {
-  const [repoUrl, setRepoUrl] = useState('');
-  const [imageName, setImageName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(null);
-
-  const handleOnboard = async () => {
-    if (!repoUrl) return;
-    setLoading(true);
-    setStatus({ type: 'info', message: 'Initiating Conduit onboarding sequence...' });
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/onboard`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_url: repoUrl, image_name: imageName || undefined }),
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setStatus({ type: 'success', message: `🚀 ${data.message}` });
-        if (data.pr_url) setTimeout(() => window.open(data.pr_url, '_blank'), 2000);
-      } else {
-        setStatus({ type: 'error', message: data.detail || 'Onboarding failed.' });
-      }
-    } catch (err) {
-      setStatus({ type: 'error', message: 'Connection error. Is the backend running?' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (!isOpen) return null;
-
   return (
-    <div className="modal-overlay">
-      <div className="card modal-card animate-fade-in" style={{ maxWidth: '500px', width: '90%', position: 'relative' }}>
-        <button className="close-btn" onClick={onClose}><X size={20} /></button>
-        <div className="section-header">
-          <h3 className="section-title">Import New Product/Repo</h3>
-        </div>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          Connect your GitHub repository to automatically inject standardized Conduit workflows.
-        </p>
-
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)'
+    }}>
+      <div className="card animate-fade-in" style={{ maxWidth: '500px', width: '90%', padding: '3rem', position: 'relative' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer' }}>✕</button>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Welcome to Conduit</h2>
+        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '2.5rem', lineHeight: 1.6 }}>Choose an environment to begin your MLOps workflow simulation.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>GITHUB REPOSITORY URL</label>
-            <input
-              placeholder="https://github.com/user/repo"
-              className="input-field"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>DOCKER IMAGE NAME (OPTIONAL)</label>
-            <input
-              placeholder="my-fraud-model"
-              className="input-field"
-              value={imageName}
-              onChange={(e) => setImageName(e.target.value)}
-            />
-          </div>
+          <button className="btn btn-primary" style={{ width: '100%', padding: '1.2rem' }} onClick={onClose}>Explore Demo Model</button>
+          <button className="btn btn-secondary" style={{ width: '100%', padding: '1.2rem' }} onClick={onClose}>Import GitHub Repository</button>
         </div>
-
-        {status && (
-          <div style={{
-            marginTop: '1.5rem',
-            padding: '0.75rem',
-            borderRadius: '6px',
-            fontSize: '0.875rem',
-            background: status.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-            color: status.type === 'error' ? 'var(--accent-red)' : 'var(--accent-blue)',
-            border: `1px solid ${status.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            {status.type === 'info' && <Loader2 size={16} className="animate-spin" />}
-            {status.type === 'success' && <CheckCircle2 size={16} />}
-            {status.type === 'error' && <AlertCircle size={16} />}
-            {status.message}
-          </div>
-        )}
-
-        <button
-          className="btn btn-primary"
-          style={{ width: '100%', marginTop: '1.5rem', padding: '0.75rem' }}
-          onClick={handleOnboard}
-          disabled={loading || !repoUrl}
-        >
-          {loading ? 'Processing...' : 'Run Auto-Onboarding'}
-        </button>
       </div>
+    </div>
+  );
+}
 
-      <style jsx>{`
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.7);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 100;
-        }
-        .close-btn {
-          position: absolute;
-          top: 1rem;
-          right: 1rem;
-          background: transparent;
-          border: none;
-          color: var(--text-secondary);
-          cursor: pointer;
-        }
-        .input-field {
-          width: 100%;
-          background: var(--bg-card);
-          border: 1px solid var(--border);
-          padding: 0.75rem;
-          border-radius: 6px;
-          color: var(--text-primary);
-          outline: none;
-        }
-        .input-field:focus {
-          border-color: var(--accent-blue);
-        }
-      `}</style>
+function StatCard({ label, value, unit, trend, icon }) {
+  return (
+    <div className="card stat-card">
+      <div className="stat-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ color: 'var(--text-secondary)' }}>{icon}</div>
+          <span className="stat-label">{label}</span>
+        </div>
+        {trend && (
+          <span style={{ fontSize: '0.75rem', color: trend.startsWith('+') ? 'var(--accent-green)' : 'var(--accent-blue)', fontWeight: 600 }}>
+            {trend}
+          </span>
+        )}
+      </div>
+      <div className="stat-value">
+        {value}
+        <span className="stat-unit">{unit}</span>
+      </div>
     </div>
   );
 }
@@ -223,13 +134,13 @@ function InfrastructureItem({ icon, name, status }) {
 }
 
 function PipelineView() {
-  const [activeStep, setActiveStep] = useState(3);
+  const [activeStep, setActiveStep] = useState(4);
   const stages = [
-    { name: 'Run Tests', status: 'completed', duration: '1m 42s' },
-    { name: 'Docker Build', status: 'completed', duration: '3m 11s' },
-    { name: 'Security Scan', status: 'completed', duration: '0m 58s' },
-    { name: 'Deploy Staging', status: 'in-progress', duration: '2m 05s' },
-    { name: 'Deploy Prod', status: 'pending', duration: '-' },
+    { id: "test", label: "Run Tests", icon: <CheckCircle2 size={18} />, duration: "1m 42s", status: 'success' },
+    { id: "build", label: "Docker Build", icon: <CheckCircle2 size={18} />, duration: "3m 11s", status: 'success' },
+    { id: "scan", label: "Security Scan", icon: <CheckCircle2 size={18} />, duration: "0m 58s", status: 'success' },
+    { id: "staging", label: "Deploy Staging", icon: <CheckCircle2 size={18} />, duration: "2m 05s", status: 'success' },
+    { id: "prod", label: "Deploy Prod", icon: <Loader2 size={18} className="animate-spin" />, duration: "2m 33s", status: 'running' },
   ];
 
   return (
@@ -249,30 +160,23 @@ function PipelineView() {
         </div>
 
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          {/* Connector Line Base */}
           <div style={{ position: 'absolute', top: '24px', left: '40px', right: '40px', height: '1px', background: 'rgba(255,255,255,0.08)', zIndex: 0 }} />
 
           {stages.map((stage, i) => {
-            const isCompleted = stage.status === 'completed';
-            const isInProgress = stage.status === 'in-progress';
+            const isCompleted = stage.status === 'success';
+            const isInProgress = stage.status === 'running';
 
             return (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', zIndex: 1, flex: 1 }}>
                 <div style={{
                   width: '48px', height: '48px', borderRadius: '50%',
                   background: isCompleted ? 'rgba(34, 197, 94, 0.05)' : isInProgress ? 'rgba(59, 130, 246, 0.05)' : 'rgba(14,14,14,0.8)',
-                  border: `1px solid ${isCompleted ? 'var(--accent-green)' : isInProgress ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)'}`,
+                  border: `2px solid ${isCompleted ? 'var(--accent-green)' : isInProgress ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.4s ease',
                   boxShadow: isInProgress ? '0 0 20px rgba(59, 130, 246, 0.2)' : 'none'
                 }}>
-                  {isCompleted ? (
-                    <CheckCircle2 size={20} color="var(--accent-green)" />
-                  ) : isInProgress ? (
-                    <Loader2 size={20} className="animate-spin" color="var(--accent-blue)" />
-                  ) : (
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-                  )}
+                  {isCompleted ? <span style={{ color: 'var(--accent-green)' }}>✓</span> : isInProgress ? <span style={{ color: 'var(--accent-blue)' }} className="animate-spin">◌</span> : <span>○</span>}
                 </div>
 
                 <div style={{ textAlign: 'center' }}>
@@ -281,17 +185,16 @@ function PipelineView() {
                     color: isCompleted || isInProgress ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
                     textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '0.2rem'
                   }}>
-                    {stage.name}
+                    {stage.label}
                   </p>
                   <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>
                     {stage.duration}
                   </p>
                 </div>
 
-                {/* Connector Progress Line Overlay (Rendered only for completed steps to the next) */}
-                {i < stages.length - 1 && i < activeStep && (
+                {i < stages.length - 1 && isCompleted && (
                   <div style={{
-                    position: 'absolute', top: '24px', left: '50%', width: '100%', height: '1px',
+                    position: 'absolute', top: '24px', left: '50%', width: '100%', height: '2px',
                     background: 'var(--accent-green)', zIndex: -1, opacity: 0.6
                   }} />
                 )}
@@ -339,7 +242,7 @@ jobs:
           <h4 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem' }}>Pipeline Stats</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {[
-              { label: 'Avg Runtime', value: '14m 22s', icon: <History size={14} /> },
+              { label: 'Avg Runtime', value: '14m 22s', icon: <HistoryIcon size={14} /> },
               { label: 'Success Rate', value: '98.4%', icon: <CheckCircle2 size={14} /> },
               { label: 'Queued Jobs', value: '0 Active', icon: <Settings2 size={14} /> },
             ].map((stat, i) => (
@@ -360,57 +263,60 @@ jobs:
 
 function HistoryView() {
   const logs = [
-    { commit: 'a3f7c91', branch: 'main', env: 'prod', actor: 'push', status: 'success', time: '2m ago' },
-    { commit: '88be204', branch: 'develop', env: 'staging', actor: 'push', status: 'success', time: '47m ago' },
-    { commit: 'f12d330', branch: 'feature/retrain', env: 'staging', actor: 'PR', status: 'failed', time: '3h ago' },
-    { commit: 'c90a17e', branch: 'main', env: 'prod', actor: 'push', status: 'success', time: '1d ago' },
-    { commit: '74bb819', branch: 'main', env: 'prod', actor: 'schedule', status: 'success', time: '3d ago' },
+    { sha: "a3f7c91", env: "prod", status: "success", time: "2m ago", branch: "main", triggered: "push" },
+    { sha: "88be204", env: "staging", status: "success", time: "47m ago", branch: "develop", triggered: "push" },
+    { sha: "f12d330", env: "staging", status: "failed", time: "3h ago", branch: "feature/retrain", triggered: "PR" },
+    { sha: "c90a17e", env: "prod", status: "success", time: "1d ago", branch: "main", triggered: "push" },
+    { sha: "74bb019", env: "prod", status: "success", time: "3d ago", branch: "main", triggered: "schedule" },
+  ];
+
+  const modelHistory = [
+    { version: "v2.4.1", stage: "Production", accuracy: "93.2%", f1: "0.911", date: "2d ago", runs: "run_88c2f" },
+    { version: "v2.4.0", stage: "Archived", accuracy: "92.7%", f1: "0.905", date: "9d ago", runs: "run_77b1e" },
+    { version: "v2.3.2", stage: "Archived", accuracy: "91.9%", f1: "0.897", date: "23d ago", runs: "run_66a0d" },
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="card animate-fade-in" style={{ padding: '0' }}>
-        <div className="section-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', marginBottom: '0' }}>
-          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600 }}>Deployment History</h3>
-          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem', fontFamily: "'DM Mono', monospace" }}>5 RECENT DEPLOYS</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      <div className="card animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
+        <div className="section-header" style={{ padding: '2rem', borderBottom: '1px solid var(--border)', marginBottom: '0' }}>
+          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 600 }}>Deployment History</h3>
+          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem', fontFamily: "'DM Mono', monospace" }}>{logs.length} RECENT DEPLOYS</span>
         </div>
         <div className="table-container">
-          <table style={{ background: 'transparent' }}>
+          <table style={{ width: '100%', background: 'transparent' }}>
             <thead>
               <tr style={{ background: 'rgba(255,255,255,0.01)' }}>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>COMMIT</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>BRANCH</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>ENVIRONMENT</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>TRIGGERED BY</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>STATUS</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.65rem', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>TIME</th>
+                {["COMMIT", "BRANCH", "ENVIRONMENT", "TRIGGERED BY", "STATUS", "TIME"].map(h => (
+                  <th key={h} style={{ padding: '1.2rem 2rem', fontSize: '0.65rem', letterSpacing: '0.12em', fontFamily: "'DM Mono', monospace", color: 'rgba(255,255,255,0.3)', textAlign: 'left', fontWeight: 400, borderBottom: '1px solid var(--border)' }}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {logs.map((log, i) => (
-                <tr key={i} style={{ transition: 'background 0.2s', cursor: 'default' }}>
-                  <td style={{ padding: '1rem 1.5rem' }}>
-                    <span style={{ color: 'var(--accent-blue)', fontFamily: "'DM Mono', monospace", padding: '0.2rem 0.5rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '4px' }}>{log.commit}</span>
+                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}>
+                  <td style={{ padding: '1.2rem 2rem' }}>
+                    <span style={{ color: 'var(--accent-blue)', fontFamily: "'DM Mono', monospace", padding: '0.2rem 0.6rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '4px', fontSize: '0.8rem' }}>{log.sha}</span>
                   </td>
-                  <td style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <td style={{ padding: '1.2rem 2rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <Globe size={14} style={{ opacity: 0.3 }} /> {log.branch}
                     </div>
                   </td>
-                  <td style={{ padding: '1rem 1.5rem' }}>
+                  <td style={{ padding: '1.2rem 2rem' }}>
                     <span style={{
-                      padding: '0.2rem 0.6rem', background: log.env === 'prod' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(59, 130, 246, 0.05)',
-                      borderRadius: '99px', fontSize: '0.7rem', color: log.env === 'prod' ? 'var(--accent-green)' : 'var(--accent-blue)', border: '1px solid currentColor', opacity: 0.8
+                      padding: '0.25rem 0.8rem', background: log.env === 'prod' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(59, 130, 246, 0.05)',
+                      borderRadius: '99px', fontSize: '0.7rem', color: log.env === 'prod' ? 'var(--accent-green)' : 'var(--accent-blue)', border: '1px solid currentColor', opacity: 0.8, textTransform: 'uppercase'
                     }}>{log.env}</span>
                   </td>
-                  <td style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontFamily: "'DM Mono', monospace" }}>{log.actor}</td>
-                  <td style={{ padding: '1rem 1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: log.status === 'success' ? 'var(--accent-green)' : 'var(--accent-red)', fontSize: '0.75rem', fontWeight: 600 }}>
+                  <td style={{ padding: '1.2rem 2rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', fontFamily: "'DM Mono', monospace" }}>{log.triggered}</td>
+                  <td style={{ padding: '1.2rem 2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: log.status === 'success' ? 'var(--accent-green)' : 'var(--accent-red)', fontSize: '0.75rem', fontWeight: 600 }}>
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
                       {log.status}
                     </div>
                   </td>
-                  <td style={{ padding: '1rem 1.5rem', color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>{log.time}</td>
+                  <td style={{ padding: '1.2rem 2rem', color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>{log.time}</td>
                 </tr>
               ))}
             </tbody>
@@ -418,32 +324,44 @@ function HistoryView() {
         </div>
       </div>
 
-      <div className="card animate-fade-in">
-        <div className="section-header" style={{ marginBottom: '1.5rem' }}>
-          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.25rem', fontWeight: 600 }}>MLflow Model Registry</h3>
+      <div className="card animate-fade-in" style={{ padding: '2rem' }}>
+        <div className="section-header" style={{ marginBottom: '2rem' }}>
+          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 600 }}>MLflow Model Registry</h3>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-              <h4 style={{ fontSize: '1.1rem', color: 'var(--accent-green)', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>v2.4.1</h4>
-              <span style={{ padding: '0.1rem 0.5rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-green)', fontSize: '0.65rem', borderRadius: '4px', textTransform: 'uppercase' }}>Production</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {modelHistory.map((m, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem',
+              background: 'rgba(255,255,255,0.01)', border: `1px solid ${i === 0 ? 'rgba(34, 197, 94, 0.2)' : 'var(--border)'}`, borderRadius: '12px',
+              flexWrap: 'wrap', gap: '1.5rem'
+            }}>
+              <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
+                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '1.1rem', fontWeight: 700, color: i === 0 ? 'var(--accent-green)' : 'rgba(255,255,255,0.4)' }}>{m.version}</span>
+                <span style={{
+                  padding: '2px 10px', borderRadius: '20px', background: i === 0 ? 'rgba(34, 197, 94, 0.05)' : 'rgba(255,255,255,0.05)',
+                  color: i === 0 ? 'var(--accent-green)' : 'rgba(255,255,255,0.3)', border: `1px solid ${i === 0 ? 'var(--accent-green)' : 'rgba(255,255,255,0.1)'}`,
+                  fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em'
+                }}>{m.stage}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '3rem', flexWrap: 'wrap' }}>
+                {[
+                  { label: "Accuracy", value: m.accuracy },
+                  { label: "F1 Score", value: m.f1 },
+                  { label: "Run ID", value: m.runs, isBlue: true },
+                  { label: "Registered", value: m.date, isGray: true },
+                ].map((stat, idx) => (
+                  <div key={idx} style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>{stat.label}</div>
+                    <div style={{
+                      fontSize: '1rem', fontWeight: 600,
+                      color: stat.isBlue ? 'var(--accent-blue)' : stat.isGray ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)',
+                      fontFamily: stat.isBlue ? "'DM Mono', monospace" : 'inherit'
+                    }}>{stat.value}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' }}>Registered on Feb 23, 10:45 AM</p>
-          </div>
-          <div style={{ display: 'flex', gap: '2.5rem' }}>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>Accuracy</p>
-              <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>93.2%</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>F1 Score</p>
-              <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>0.911</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>Run ID</p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--accent-blue)', fontFamily: "'DM Mono', monospace" }}>run_88c2f</p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
@@ -478,7 +396,6 @@ function InferenceDemo() {
     setError(null);
     setIsWakingUp(false);
 
-    // Waking up usually takes ~10-45s for Render cold start. Let's show the user a message after 2.5s
     const slowTimer = setTimeout(() => setIsWakingUp(true), 2500);
 
     try {
@@ -532,10 +449,10 @@ function InferenceDemo() {
           background: 'rgba(255,255,255,0.9)', color: '#0e0e0e'
         }}>
           {loading ? (
-            <>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
               <Loader2 className="animate-spin" size={20} />
-              {isWakingUp && <span style={{ fontSize: '0.65rem', opacity: 0.8, textTransform: 'none', letterSpacing: '0' }}>Waking up the backend servers... This might take up to a minute.</span>}
-            </>
+              {isWakingUp && <span style={{ fontSize: '0.65rem', opacity: 0.8, textTransform: 'none', letterSpacing: '0' }}>Waking up the backend servers...</span>}
+            </div>
           ) : 'Process Transaction'}
         </button>
       </div>
@@ -592,18 +509,17 @@ export default function Dashboard() {
       }
     }
   }, []);
+
   const [modelInfo, setModelInfo] = useState({ version: '...', environment: '...' });
   const [healthStatus, setHealthStatus] = useState('Offline');
   const [chartData, setChartData] = useState([]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      // Fetch Health
       const healthRes = await fetch(`${API_BASE_URL}/health`);
       if (healthRes.ok) setHealthStatus('Operational');
       else setHealthStatus('Warning');
 
-      // Fetch Model Info
       const infoRes = await fetch(`${API_BASE_URL}/model/info`);
       if (infoRes.ok) {
         const data = await infoRes.json();
@@ -625,7 +541,6 @@ export default function Dashboard() {
       }));
     }, 3000);
 
-    // Initial Chart Data
     const data = [];
     for (let i = 15; i >= 0; i--) {
       const d = new Date();
@@ -645,12 +560,11 @@ export default function Dashboard() {
     { id: 'overview', label: 'Monitor', icon: <BarChart3 size={18} /> },
     { id: 'pipeline', label: 'Workflows', icon: <Settings2 size={18} /> },
     { id: 'inference', label: 'Simulation', icon: <Search size={18} /> },
-    { id: 'history', label: 'Audit', icon: <History size={18} /> },
+    { id: 'history', label: 'Audit', icon: <HistoryIcon size={18} /> },
   ];
 
   return (
-    <div className="dashboard-container" style={{ position: 'relative', overflow: 'hidden', background: '#0e0e0e' }}>
-      {/* Background Grid */}
+    <div className="dashboard-container" style={{ position: 'relative', overflow: 'hidden', background: '#0e0e0e', minHeight: '100vh' }}>
       <div
         style={{
           position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
@@ -666,7 +580,7 @@ export default function Dashboard() {
 
       <header className="header" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(14, 14, 14, 0.8)', backdropFilter: 'blur(20px)', position: 'relative', zIndex: 50 }}>
         <div className="header-inner">
-          <div className="logo-area" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="logo-area">
             <div className="logo-icon" style={{
               width: '32px', height: '32px', border: '1px solid rgba(59, 130, 246, 0.5)',
               background: 'rgba(59, 130, 246, 0.05)', borderRadius: '4px',
@@ -680,115 +594,88 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <nav className="nav-tabs" style={{ gap: '0.25rem' }}>
+          <nav className="nav">
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  fontFamily: "'DM Mono', monospace",
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  padding: '0.5rem 1rem',
-                  color: activeTab === tab.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
-                  background: activeTab === tab.id ? 'rgba(255,255,255,0.05)' : 'transparent',
-                  border: 'none',
-                  borderRadius: '4px',
-                  transition: 'all 0.3s ease'
-                }}
+                className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
               >
-                {tab.label}
+                {tab.icon}
+                <span>{tab.label}</span>
               </button>
             ))}
           </nav>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            <button className="btn btn-outline" style={{
-              border: '1px solid var(--border)',
-              fontFamily: "'DM Mono', monospace",
-              fontSize: '0.7rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              padding: '0.4rem 0.8rem'
-            }} onClick={() => setIsModalOpen(true)}>
-              <Plus size={14} />
-              New Repo
-            </button>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.625rem',
-              fontSize: '0.7rem', fontFamily: "'DM Mono', monospace",
-              color: healthStatus === 'Operational' ? 'var(--accent-green)' : 'var(--accent-red)',
-              textTransform: 'uppercase'
-            }}>
-              <div style={{
-                width: 6, height: 6, borderRadius: '50%', background: 'currentColor',
-                boxShadow: healthStatus === 'Operational' ? '0 0 10px currentColor' : 'none'
-              }} />
-              {healthStatus}
+          <div className="header-actions">
+            <div className="status-badge">
+              <div className="status-dot" style={{ background: healthStatus === 'Operational' ? 'var(--accent-green)' : 'var(--accent-red)' }} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{healthStatus}</span>
             </div>
+            <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }} onClick={() => setIsModalOpen(true)}>Environments</button>
           </div>
         </div>
       </header>
 
+      {/* Ticker Bar */}
+      <div style={{
+        overflow: 'hidden', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border)',
+        padding: '8px 0', position: 'relative', zIndex: 10
+      }}>
+        <div style={{
+          display: 'flex', gap: '0',
+          animation: 'ticker 40s linear infinite',
+          width: 'max-content',
+          fontFamily: "'DM Mono', monospace",
+          fontSize: '0.65rem',
+          letterSpacing: '0.1em',
+          color: 'rgba(255,255,255,0.25)',
+          textTransform: 'uppercase'
+        }}>
+          {[...Array(2)].flatMap(() => [
+            "✓ TEST SUITE PASSED (47/47)",
+            "⬡ DOCKER BUILD SUCCESS · 3m11s",
+            "▶ DEPLOYED TO PROD · 2m AGO",
+            "◈ DRIFT SCORE 0.034 · NORMAL",
+            "⚡ AVG LATENCY 44ms · P99 112ms",
+            "◎ 1,847 REQUESTS / MIN",
+            "✓ MODEL ACCURACY 93.2%",
+            "⬡ GKE PODS: 3/3 RUNNING",
+          ]).map((item, i) => (
+            <span key={i} style={{ padding: '0 40px', borderRight: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' }}>{item}</span>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes ticker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
+
       <main className="main-content">
         {activeTab === 'overview' && (
           <div className="grid animate-fade-in">
-            <div className="grid stats-grid">
-              <div className="card stat-card" style={{
-                borderTop: '2px solid var(--accent-blue)',
-                background: 'rgba(255,255,255,0.01)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                <p className="stat-label" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Model Accuracy</p>
-                <h2 className="stat-value" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 300 }}>{stats.accuracy.toFixed(1)}%</h2>
-                <p className="stat-footer text-up" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.05em' }}><TrendingUp size={12} /> Live Production</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                <StatCard label="Accuracy" value={stats.accuracy.toFixed(1)} unit="%" trend="+0.2%" icon={<CheckCircle2 size={18} />} />
+                <StatCard label="F1 Score" value={stats.f1.toFixed(1)} unit="%" trend="+0.5%" icon={<Search size={18} />} />
+                <StatCard label="Latency" value={stats.latency} unit="ms" icon={<Zap size={18} />} />
+                <StatCard label="Drift" value={stats.drift} unit="" trend={`${stats.drift > 0.1 ? '↑' : '↓'}`} icon={<AlertCircle size={18} />} />
               </div>
-              <div className="card stat-card" style={{
-                borderTop: '2px solid var(--accent-green)',
-                background: 'rgba(255,255,255,0.01)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                <p className="stat-label" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>F1-Score</p>
-                <h2 className="stat-value" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 300 }}>{stats.f1.toFixed(1)}%</h2>
-                <p className="stat-footer" style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.05em' }}>Baseline 90.0%</p>
-              </div>
-              <div className="card stat-card" style={{
-                background: 'rgba(255,255,255,0.01)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                <p className="stat-label" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Inference Latency</p>
-                <h2 className="stat-value" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 300 }}>{stats.latency}ms</h2>
-                <p className="stat-footer text-down" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.05em' }}><Activity size={12} /> Optimization Active</p>
-              </div>
-              <div className="card stat-card" style={{
-                background: 'rgba(255,255,255,0.01)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                <p className="stat-label" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Data Drift (PSI)</p>
-                <h2 className="stat-value" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 300 }}>{stats.drift}</h2>
-                <p className="stat-footer" style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.05em' }}><ShieldCheck size={12} /> Below Threshold</p>
-              </div>
-            </div>
 
-            <div className="grid" style={{ gridTemplateColumns: '2.5fr 1fr' }}>
-              <div className="card chart-card" style={{ background: 'rgba(0,0,0,0.2)' }}>
+              <div className="card chart-card">
                 <div className="section-header">
-                  <h3 className="section-title" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem' }}>Performance Retention</h3>
-                  <div className="badge badge-blue" style={{ fontFamily: "'DM Mono', monospace" }}>Last 15 Cycles</div>
+                  <h3 className="section-title">Performance Retention</h3>
+                  <div className="chart-legend">
+                    <div className="legend-item"><div className="legend-dot blue"></div> Accuracy</div>
+                    <div className="legend-item"><div className="legend-dot green"></div> F1 Score</div>
+                  </div>
                 </div>
-                <div style={{ height: '320px', width: '100%' }}>
+                <div style={{ width: '100%', height: '300px' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.2} />
@@ -812,39 +699,39 @@ export default function Dashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
+            </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div className="card">
-                  <div className="section-header">
-                    <h3 className="section-title">Engine Health</h3>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <InfrastructureItem icon={<Globe size={16} />} name="Edge Proxies" status="Operational" />
-                    <InfrastructureItem icon={<Cpu size={16} />} name="Compute Nodes" status="Operational" />
-                    <InfrastructureItem icon={<Settings2 size={16} />} name="MLflow Engine" status={healthStatus} />
-                    <InfrastructureItem icon={<RefreshCw size={16} />} name="DVC Sync" status="Operational" />
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="card">
+                <div className="section-header">
+                  <h3 className="section-title">Engine Health</h3>
                 </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <InfrastructureItem icon={<Globe size={16} />} name="Edge Proxies" status="Operational" />
+                  <InfrastructureItem icon={<Cpu size={16} />} name="Compute Nodes" status="Operational" />
+                  <InfrastructureItem icon={<Settings2 size={16} />} name="MLflow Engine" status={healthStatus} />
+                  <InfrastructureItem icon={<RefreshCw size={16} />} name="DVC Sync" status="Operational" />
+                </div>
+              </div>
 
-                <div className="card" style={{ flex: 1 }}>
-                  <h3 className="section-title" style={{ marginBottom: '1rem' }}>Model Details</h3>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                      <span>Version</span>
-                      <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>{modelInfo.version}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                      <span>Environment</span>
-                      <span style={{ color: 'var(--text-primary)' }}>{modelInfo.environment}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                      <span>Framework</span>
-                      <span style={{ color: 'var(--text-primary)' }}>Scikit-Learn</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Last Retrain</span>
-                      <span style={{ color: 'var(--text-primary)' }}>12h ago</span>
-                    </div>
+              <div className="card" style={{ flex: 1 }}>
+                <h3 className="section-title" style={{ marginBottom: '1rem' }}>Model Details</h3>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <span>Version</span>
+                    <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>{modelInfo.version}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <span>Environment</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{modelInfo.environment}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <span>Framework</span>
+                    <span style={{ color: 'var(--text-primary)' }}>Scikit-Learn</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Last Retrain</span>
+                    <span style={{ color: 'var(--text-primary)' }}>12h ago</span>
                   </div>
                 </div>
               </div>
