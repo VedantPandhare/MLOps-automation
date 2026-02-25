@@ -15,7 +15,7 @@ export const metadata = {
   title: "Conduit - Mlops automation",
   description: "End-to-end MLops automation platform",
   icons: {
-    icon: "/Favicon PNG.png",
+    icon: "/favicon.png",
   },
 };
 
