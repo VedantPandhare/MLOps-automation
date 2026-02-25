@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BarChart3,
   Settings2,
@@ -28,12 +28,49 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 // --- Components ---
 
 const GrainOverlay = () => {
+  const canvasRef = useRef(null);
+  const animRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const W = 150;
+    const H = 150;
+    canvas.width = W;
+    canvas.height = H;
+
+    const render = () => {
+      const imageData = ctx.createImageData(W, H);
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const v = Math.random() * 255;
+        imageData.data[i] = v;
+        imageData.data[i + 1] = v;
+        imageData.data[i + 2] = v;
+        imageData.data[i + 3] = 15;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      animRef.current = requestAnimationFrame(render);
+    };
+    render();
+    return () => cancelAnimationFrame(animRef.current);
+  }, []);
+
   return (
-    <div style={{
-      position: "fixed", inset: 0, width: "100%", height: "100%",
-      pointerEvents: "none", zIndex: 1, opacity: 0.25,
-      background: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-    }} />
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 1,
+        opacity: 0.35,
+        mixBlendMode: "overlay",
+      }}
+    />
   );
 };
 
@@ -188,54 +225,75 @@ function InfrastructureItem({ icon, name, status }) {
 function PipelineView() {
   const [activeStep, setActiveStep] = useState(3);
   const stages = [
-    { name: 'Run Tests', status: 'completed', time: '1m 42s' },
-    { name: 'Docker Build', status: 'completed', time: '3m 11s' },
-    { name: 'Security Scan', status: 'completed', time: '0m 58s' },
-    { name: 'Deploy Staging', status: 'in-progress', time: '2m 05s' },
-    { name: 'Deploy Prod', status: 'pending', time: '-' },
+    { name: 'Run Tests', status: 'completed', duration: '1m 42s' },
+    { name: 'Docker Build', status: 'completed', duration: '3m 11s' },
+    { name: 'Security Scan', status: 'completed', duration: '0m 58s' },
+    { name: 'Deploy Staging', status: 'in-progress', duration: '2m 05s' },
+    { name: 'Deploy Prod', status: 'pending', duration: '-' },
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="card animate-fade-in" style={{ padding: '2rem' }}>
-        <div className="section-header" style={{ marginBottom: '2.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <div className="card animate-fade-in" style={{ padding: '2.5rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', position: 'relative' }}>
+        <div className="section-header" style={{ marginBottom: '3rem' }}>
           <div>
-            <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600 }}>Current Pipeline Run</h3>
-            <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              Triggered by push · branch: <span style={{ color: 'var(--accent-green)' }}>main</span> · 8m 31s elapsed
+            <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 600 }}>Main CI/CD Pipeline</h3>
+            <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.4rem' }}>
+              SOURCE: <span style={{ color: 'var(--accent-blue)' }}>main</span> / commit <span style={{ color: 'rgba(255,255,255,0.6)' }}>a3f7c91</span>
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-orange)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', fontFamily: "'DM Mono', monospace" }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 8px currentColor' }} />
-            In Progress
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--accent-orange)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 10px currentColor' }} />
+            Pipeline Running
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative', padding: '0 1rem' }}>
-          {/* Connector Line */}
-          <div style={{ position: 'absolute', top: '20px', left: '10%', right: '10%', height: '2px', background: 'rgba(255,255,255,0.05)', zIndex: 0 }} />
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          {/* Connector Line Base */}
+          <div style={{ position: 'absolute', top: '24px', left: '40px', right: '40px', height: '1px', background: 'rgba(255,255,255,0.08)', zIndex: 0 }} />
 
-          {stages.map((s, i) => {
-            const isActive = s.status === 'in-progress';
-            const isCompleted = s.status === 'completed';
+          {stages.map((stage, i) => {
+            const isCompleted = stage.status === 'completed';
+            const isInProgress = stage.status === 'in-progress';
+
             return (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', position: 'relative', zIndex: 1, flex: 1 }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', zIndex: 1, flex: 1 }}>
                 <div style={{
-                  width: 40, height: 40, borderRadius: '50%',
-                  background: isCompleted ? 'rgba(34, 197, 94, 0.1)' : isActive ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${isCompleted ? 'var(--accent-green)' : isActive ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)'}`,
+                  width: '48px', height: '48px', borderRadius: '50%',
+                  background: isCompleted ? 'rgba(34, 197, 94, 0.05)' : isInProgress ? 'rgba(59, 130, 246, 0.05)' : 'rgba(14,14,14,0.8)',
+                  border: `1px solid ${isCompleted ? 'var(--accent-green)' : isInProgress ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: isActive ? '0 0 20px rgba(59, 130, 246, 0.2)' : 'none'
+                  transition: 'all 0.4s ease',
+                  boxShadow: isInProgress ? '0 0 20px rgba(59, 130, 246, 0.2)' : 'none'
                 }}>
-                  {isCompleted ? <CheckCircle2 size={18} color="var(--accent-green)" /> : isActive ? <Loader2 size={18} className="animate-spin" color="var(--accent-blue)" /> : <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />}
+                  {isCompleted ? (
+                    <CheckCircle2 size={20} color="var(--accent-green)" />
+                  ) : isInProgress ? (
+                    <Loader2 size={20} className="animate-spin" color="var(--accent-blue)" />
+                  ) : (
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                  )}
                 </div>
+
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: isCompleted || isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)', fontFamily: "'DM Mono', monospace" }}>{s.name}</p>
-                  <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', marginTop: '0.2rem', fontFamily: "'DM Mono', monospace" }}>{s.time}</p>
+                  <p style={{
+                    fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', fontWeight: 600,
+                    color: isCompleted || isInProgress ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
+                    textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '0.2rem'
+                  }}>
+                    {stage.name}
+                  </p>
+                  <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>
+                    {stage.duration}
+                  </p>
                 </div>
-                {/* Progress highlight for connector */}
+
+                {/* Connector Progress Line Overlay (Rendered only for completed steps to the next) */}
                 {i < stages.length - 1 && i < activeStep && (
-                  <div style={{ position: 'absolute', top: '20px', left: '50%', width: '100%', height: '2px', background: 'linear-gradient(to right, var(--accent-green), rgba(34, 197, 94, 0.2))', zIndex: -1 }} />
+                  <div style={{
+                    position: 'absolute', top: '24px', left: '50%', width: '100%', height: '1px',
+                    background: 'var(--accent-green)', zIndex: -1, opacity: 0.6
+                  }} />
                 )}
               </div>
             );
@@ -243,29 +301,58 @@ function PipelineView() {
         </div>
       </div>
 
-      <div className="card animate-fade-in" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.2)' }}>
-        <div className="section-header" style={{ marginBottom: '1rem' }}>
-          <h3 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>Active Workflow · <span style={{ color: 'var(--accent-green)' }}>.github/workflows/main.yml</span></h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
+        <div className="card" style={{ padding: '0', overflow: 'hidden', background: 'rgba(0,0,0,0.2)' }}>
+          <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h4 style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Workflow Artifact · <span style={{ color: 'var(--accent-blue)' }}>main.yml</span></h4>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', opacity: 0.4 }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', opacity: 0.4 }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', opacity: 0.4 }} />
+            </div>
+          </div>
+          <pre style={{
+            margin: 0, padding: '1.5rem',
+            fontFamily: "'DM Mono', monospace", fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)',
+            lineHeight: 1.7, overflowX: 'auto', background: 'transparent'
+          }}>
+            {`name: MLOps CI/CD Pipeline
+on:
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    uses: org/shared/.github/workflows/run-tests.yml@main
+  
+  build:
+    needs: test
+    uses: org/shared/.github/workflows/docker-build.yml@main
+
+  deploy-prod:
+    needs: build
+    environment: production`}
+          </pre>
         </div>
-        <pre style={{
-          margin: 0, padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px',
-          fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)',
-          lineHeight: 1.6, border: '1px solid var(--border)', overflowX: 'auto'
-        }}>
-          {`1  name: MLOps CI/CD Pipeline
-2  on:
-3  push:
-4  branches: [ main, develop ]
-5  jobs:
-6  test:
-7  uses: org/shared/.github/workflows/run-tests.yml@main
-8  build:
-9  needs: test
-10 uses: org/shared/.github/workflows/docker-build.yml@main
-11 deploy-prod:
-12 needs: build
-13 environment: production # Requires approval`}
-        </pre>
+
+        <div className="card" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.01)' }}>
+          <h4 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem' }}>Pipeline Stats</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {[
+              { label: 'Avg Runtime', value: '14m 22s', icon: <History size={14} /> },
+              { label: 'Success Rate', value: '98.4%', icon: <CheckCircle2 size={14} /> },
+              { label: 'Queued Jobs', value: '0 Active', icon: <Settings2 size={14} /> },
+            ].map((stat, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontFamily: "'DM Mono', monospace" }}>
+                  {stat.icon}
+                  {stat.label}
+                </div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>{stat.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
