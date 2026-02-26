@@ -563,7 +563,56 @@ function InferenceDemo() {
             </div>
           ))}
         </div>
-        <button className="btn btn-primary" onClick={runPrediction} disabled={loading} style={{
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              const fraudCase = {
+                amount: 850.00,
+                hour_of_day: 2,
+                day_of_week: 2,
+                merchant_category: 12,
+                distance_from_home: 120.5,
+                num_transactions_24h: 15,
+                avg_transaction_amount: 180.00,
+                is_international: 1,
+                card_age_days: 10,
+                failed_attempts_24h: 4,
+              };
+              setFormData(fraudCase);
+              // Small delay to ensure state update before execution
+              setTimeout(() => {
+                const btn = document.getElementById('process-btn');
+                if (btn) btn.click();
+              }, 100);
+            }}
+            style={{
+              padding: '0.75rem', fontSize: '0.7rem', border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', letterSpacing: '0.05em'
+            }}
+          >
+            TEST FRAUD CASE
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setFormData({
+              amount: 250.00,
+              hour_of_day: 14,
+              day_of_week: 2,
+              merchant_category: 5,
+              distance_from_home: 12.5,
+              num_transactions_24h: 3,
+              avg_transaction_amount: 180.00,
+              is_international: 0,
+              card_age_days: 730,
+              failed_attempts_24h: 0,
+            })}
+            style={{ padding: '0.75rem', fontSize: '0.7rem' }}
+          >
+            RESET LEGIT
+          </button>
+        </div>
+        <button id="process-btn" className="btn btn-primary" onClick={runPrediction} disabled={loading} style={{
           width: '100%', justifyContent: 'center', padding: '1.2rem',
           fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em',
           background: 'rgba(255,255,255,0.9)', color: '#0e0e0e'
