@@ -4,9 +4,17 @@ Serves real-time predictions with Prometheus metrics and health checks.
 """
 
 import os
+import sys
 import time
 import logging
 from contextlib import asynccontextmanager
+
+# Robust path handling for absolute package imports
+# Ensure the parent directory is in sys.path so 'from app.xxx' works
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
