@@ -563,35 +563,40 @@ function InferenceDemo() {
             </div>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '2rem' }}>
           <button
             className="btn btn-secondary"
             onClick={() => {
-              const fraudCase = {
-                amount: 850.00,
-                hour_of_day: 2,
-                day_of_week: 2,
-                merchant_category: 12,
-                distance_from_home: 120.5,
-                num_transactions_24h: 15,
-                avg_transaction_amount: 180.00,
-                is_international: 1,
-                card_age_days: 10,
-                failed_attempts_24h: 4,
-              };
-              setFormData(fraudCase);
-              // Small delay to ensure state update before execution
-              setTimeout(() => {
-                const btn = document.getElementById('process-btn');
-                if (btn) btn.click();
-              }, 100);
+              setFormData({
+                amount: 850.00, hour_of_day: 2, day_of_week: 2, merchant_category: 12,
+                distance_from_home: 120.5, num_transactions_24h: 15, avg_transaction_amount: 180.00,
+                is_international: 1, card_age_days: 10, failed_attempts_24h: 4,
+              });
+              setTimeout(() => document.getElementById('process-btn')?.click(), 100);
             }}
             style={{
-              padding: '0.75rem', fontSize: '0.7rem', border: '1px solid rgba(239, 68, 68, 0.3)',
-              background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', letterSpacing: '0.05em'
+              padding: '0.75rem', fontSize: '0.65rem', border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444'
             }}
           >
-            TEST FRAUD CASE
+            HIGH RISK
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              setFormData({
+                amount: 250.00, hour_of_day: 0, day_of_week: 2, merchant_category: 5,
+                distance_from_home: 12.5, num_transactions_24h: 3, avg_transaction_amount: 180.00,
+                is_international: 0, card_age_days: 730, failed_attempts_24h: 0,
+              });
+              setTimeout(() => document.getElementById('process-btn')?.click(), 100);
+            }}
+            style={{
+              padding: '0.75rem', fontSize: '0.65rem', border: '1px solid rgba(245, 158, 11, 0.3)',
+              background: 'rgba(245, 158, 11, 0.05)', color: '#f59e0b'
+            }}
+          >
+            MEDIUM RISK
           </button>
           <button
             className="btn btn-secondary"
@@ -607,7 +612,7 @@ function InferenceDemo() {
               card_age_days: 730,
               failed_attempts_24h: 0,
             })}
-            style={{ padding: '0.75rem', fontSize: '0.7rem' }}
+            style={{ padding: '0.75rem', fontSize: '0.65rem' }}
           >
             RESET LEGIT
           </button>
@@ -622,39 +627,53 @@ function InferenceDemo() {
               <Loader2 className="animate-spin" size={20} />
               {isWakingUp && <span style={{ fontSize: '0.65rem', opacity: 0.8, textTransform: 'none', letterSpacing: '0' }}>Waking up the backend servers...</span>}
             </div>
-          ) : 'Process Transaction'}
+          ) : 'Execute Inference'}
         </button>
       </div>
 
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'rgba(255,255,255,0.02)' }}>
-        <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, marginBottom: '2rem', textAlign: 'center' }}>Analysis Result</h3>
-        {error ? (
-          <div style={{ textAlign: 'center', color: 'var(--accent-red)' }}>
-            <AlertCircle size={40} style={{ margin: '0 auto 1rem' }} />
-            <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.8rem' }}>{error}</p>
-          </div>
-        ) : result ? (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{
-              width: '140px', height: '140px', border: `1px solid ${riskColors[result.risk_level] || 'var(--border)'}`,
-              borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem',
-              boxShadow: `0 0 40px -10px ${riskColors[result.risk_level] || 'transparent'}`,
-              background: 'rgba(255,255,255,0.01)'
-            }}>
-              <span style={{ fontSize: '2rem', fontWeight: 700, fontFamily: "'Cormorant Garamond', serif" }}>{(result.fraud_probability * 100).toFixed(1)}%</span>
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>Risk Index</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, marginBottom: '2rem', textAlign: 'center' }}>Inference Report</h3>
+          {error ? (
+            <div style={{ textAlign: 'center', color: 'var(--accent-red)' }}>
+              <AlertCircle size={40} style={{ margin: '0 auto 1rem' }} />
+              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.8rem' }}>{error}</p>
             </div>
-            <h4 style={{ color: riskColors[result.risk_level], fontSize: '1.8rem', fontWeight: 600, marginBottom: '1rem', fontFamily: "'Cormorant Garamond', serif" }}>{result.is_fraud ? 'ALERT: FRAUD DETECTED' : 'VERIFIED: SYSTEM SAFE'}</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Mono', monospace" }}>
-              <p>RISK LEVEL: <strong style={{ color: 'var(--text-primary)' }}>{result.risk_level}</strong></p>
-              <p>LATENCY: <strong style={{ color: 'var(--text-primary)' }}>{result.latency_ms.toFixed(2)}ms</strong></p>
-              <p>MODEL: <strong style={{ color: 'var(--text-primary)' }}>{result.model_version}</strong></p>
+          ) : result ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '140px', height: '140px', border: `1px solid ${riskColors[result.risk_level] || 'var(--border)'}`,
+                borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem',
+                boxShadow: `0 0 40px -10px ${riskColors[result.risk_level] || 'transparent'}`,
+                background: 'rgba(255,255,255,0.01)'
+              }}>
+                <span style={{ fontSize: '2rem', fontWeight: 700, fontFamily: "'Cormorant Garamond', serif" }}>{(result.fraud_probability * 100).toFixed(1)}%</span>
+                <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>Risk Index</span>
+              </div>
+              <h4 style={{ color: riskColors[result.risk_level], fontSize: '1.8rem', fontWeight: 600, marginBottom: '1rem', fontFamily: "'Cormorant Garamond', serif" }}>{result.is_fraud ? 'ALERT: FRAUD DETECTED' : 'VERIFIED: SYSTEM SAFE'}</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Mono', monospace" }}>
+                <p>RISK LEVEL: <strong style={{ color: 'var(--text-primary)' }}>{result.risk_level}</strong></p>
+                <p>LATENCY: <strong style={{ color: 'var(--text-primary)' }}>{result.latency_ms.toFixed(2)}ms</strong></p>
+                <p>MODEL: <strong style={{ color: 'var(--text-primary)' }}>{result.model_version}</strong></p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', opacity: 0.3 }}>
-            <Zap size={60} style={{ margin: '0 auto 1.5rem', strokeWidth: 1 }} />
-            <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Ready for Processing</p>
+          ) : (
+            <div style={{ textAlign: 'center', opacity: 0.3 }}>
+              <Zap size={60} style={{ margin: '0 auto 1.5rem', strokeWidth: 1 }} />
+              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Ready for Processing</p>
+            </div>
+          )}
+        </div>
+
+        {result && (
+          <div className="card animate-fade-in" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <h4 style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>Server Audit Log</h4>
+              <span className="badge badge-green" style={{ fontSize: '0.6rem' }}>HTTP 200 OK</span>
+            </div>
+            <pre style={{ margin: 0, fontSize: '0.75rem', color: 'var(--accent-blue)', opacity: 0.8, fontFamily: "'DM Mono', monospace", overflowX: 'auto' }}>
+              {JSON.stringify(result, null, 2)}
+            </pre>
           </div>
         )}
       </div>
