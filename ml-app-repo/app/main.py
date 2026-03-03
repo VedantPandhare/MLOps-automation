@@ -170,10 +170,60 @@ async def predict_batch(request: BatchPredictionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/projects", tags=["Projects"])
+async def list_projects():
+    """List all available MLOps projects."""
+    models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
+    projects = []
+    if os.path.exists(models_dir):
+        for item in os.listdir(models_dir):
+            item_path = os.path.join(models_dir, item)
+            if os.path.isdir(item_path):
+                metadata_path = os.path.join(item_path, "metadata.json")
+                name = item
+                if os.path.exists(metadata_path):
+                    with open(metadata_path, 'r') as f:
+                        import json
+                        try:
+                            data = json.load(f)
+                            name = data.get("model_name", item)
+                        except: pass
+                projects.append({"id": item, "name": name})
+    
+    # Ensure fraud-detection looks like a project if it exists
+    if not any(p["id"] == "fraud-detection" for p in projects):
+        projects.insert(0, {"id": "fraud-detection", "name": "Demo - Fraud Detection"})
+        
+    return projects
+
+@app.delete("/projects/{project_id}", tags=["Projects"])
+async def delete_project(project_id: str):
+    """Delete a project and its metadata."""
+    import shutil
+    models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
+    project_path = os.path.join(models_dir, project_id)
+    
+    if os.path.exists(project_path) and os.path.isdir(project_path):
+        shutil.rmtree(project_path)
+        return {"success": True, "message": f"Project {project_id} removed."}
+    
+    raise HTTPException(status_code=404, detail="Project not found")
+
 @app.get("/model/info", tags=["Model"])
-async def model_info():
+async def model_info(project_id: Optional[str] = None):
     """Return current model metadata."""
-    metadata_path = os.path.join(os.path.dirname(__file__), "..", "models", "metadata.json")
+    models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
+    
+    # Default to first project found or fraud-detection
+    if not project_id:
+        if os.path.exists(models_dir):
+            dirs = [d for d in os.listdir(models_dir) if os.path.isdir(os.path.join(models_dir, d))]
+            if dirs:
+                project_id = dirs[0]
+        if not project_id:
+            project_id = "fraud-detection"
+
+    metadata_path = os.path.join(models_dir, project_id, "metadata.json")
     
     if os.path.exists(metadata_path):
         import json
@@ -195,18 +245,19 @@ async def model_info():
                     "deployments": data.get("deployments", [])
                 }
         except Exception as e:
-            logger.error(f"Error reading metadata.json: {e}")
+            logger.error(f"Error reading metadata.json for {project_id}: {e}")
 
+    # Fallback to hardcoded demo values if project not found
     return {
-        "model_name": "fraud-detection-model",
-        "version": os.getenv("MODEL_VERSION", "1.0.0"),
-        "accuracy": float(os.getenv("MODEL_ACCURACY", "0.95")),
-        "f1_score": float(os.getenv("MODEL_F1", "0.91")),
+        "model_name": "Demo - Fraud Detection",
+        "version": os.getenv("MODEL_VERSION", "2.4.1"),
+        "accuracy": 0.932,
+        "f1_score": 0.911,
         "latency": 4.2,
         "drift": 0.05,
-        "environment": os.getenv("ENVIRONMENT", "development"),
+        "environment": "Production",
         "architecture": "Scikit-Learn Ensemble",
-        "last_push": "12h 45m ago",
+        "last_push": "2d ago",
         "mlflow_tracking_uri": os.getenv("MLFLOW_TRACKING_URI", "N/A"),
         "history": [
             { "version": "v2.4.1", "stage": "Production", "accuracy": "93.2%", "f1": "0.911", "date": "2d ago", "runs": "run_88c2f" },
