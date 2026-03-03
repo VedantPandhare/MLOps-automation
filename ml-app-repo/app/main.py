@@ -173,6 +173,24 @@ async def predict_batch(request: BatchPredictionRequest):
 @app.get("/model/info", tags=["Model"])
 async def model_info():
     """Return current model metadata."""
+    metadata_path = os.path.join(os.path.dirname(__file__), "..", "models", "metadata.json")
+    
+    if os.path.exists(metadata_path):
+        import json
+        try:
+            with open(metadata_path, 'r') as f:
+                data = json.load(f)
+                return {
+                    "model_name": data.get("model_name", "model"),
+                    "version": data.get("version", "1.0.0"),
+                    "accuracy": data.get("accuracy", 0.95),
+                    "f1_score": data.get("f1_score", 0.91),
+                    "environment": data.get("environment", "development"),
+                    "mlflow_tracking_uri": os.getenv("MLFLOW_TRACKING_URI", "N/A"),
+                }
+        except Exception as e:
+            logger.error(f"Error reading metadata.json: {e}")
+
     return {
         "model_name": "fraud-detection-model",
         "version": os.getenv("MODEL_VERSION", "1.0.0"),

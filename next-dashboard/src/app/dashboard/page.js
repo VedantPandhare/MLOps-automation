@@ -105,22 +105,45 @@ function OnboardingModal({ isOpen, onClose }) {
       let curMsgIdx = 0;
       const interval = setInterval(() => {
         setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(() => setStep(3), 500);
-            return 100;
+          if (prev >= 90) { // Hold at 90 until API returns
+            return 90;
           }
           const next = prev + Math.random() * 15;
           if (next > (curMsgIdx + 1) * (100 / messages.length)) {
             curMsgIdx = Math.min(curMsgIdx + 1, messages.length - 1);
             setStatusMsg(messages[curMsgIdx]);
           }
-          return Math.min(next, 100);
+          return Math.min(next, 95);
         });
       }, 600);
+
+      // Actual API Call
+      const onboard = async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/onboard`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_url: repoUrl, image_name: repoUrl.split('/').pop() })
+          });
+          if (res.ok) {
+            setProgress(100);
+            setStatusMsg("Deployment initialized successfully.");
+            setTimeout(() => setStep(3), 800);
+          } else {
+            const err = await res.json();
+            setStatusMsg(`Error: ${err.detail || 'Onboarding failed'}`);
+            clearInterval(interval);
+          }
+        } catch (err) {
+          setStatusMsg(`Connection error: ${err.message}`);
+          clearInterval(interval);
+        }
+      };
+      onboard();
+
       return () => clearInterval(interval);
     }
-  }, [step]);
+  }, [step, repoUrl]);
 
   if (!isOpen) return null;
 
@@ -698,7 +721,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  const [modelInfo, setModelInfo] = useState({ version: '...', environment: '...' });
+  const [modelInfo, setModelInfo] = useState({ name: 'Fraud Detection', version: '...', environment: '...' });
   const [healthStatus, setHealthStatus] = useState('Offline');
   const [chartData, setChartData] = useState([]);
 
@@ -711,8 +734,16 @@ export default function Dashboard() {
       const infoRes = await fetch(`${API_BASE_URL}/model/info`);
       if (infoRes.ok) {
         const data = await infoRes.json();
-        setModelInfo({ version: data.version, environment: data.environment });
-        setStats(prev => ({ ...prev, accuracy: data.accuracy * 100, f1: data.f1_score * 100 }));
+        setModelInfo({
+          name: data.model_name,
+          version: data.version,
+          environment: data.environment
+        });
+        setStats(prev => ({
+          ...prev,
+          accuracy: data.accuracy * (data.accuracy <= 1 ? 100 : 1),
+          f1: data.f1_score * (data.f1_score <= 1 ? 100 : 1)
+        }));
       }
     } catch (err) {
       setHealthStatus('Offline');
@@ -722,12 +753,8 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
     const interval = setInterval(() => {
-      setStats(prev => ({
-        ...prev,
-        latency: parseFloat((3.5 + Math.random() * 1.5).toFixed(1)),
-        drift: parseFloat(Math.max(0.01, Math.min(0.14, (prev.drift || 0.05) + (Math.random() - 0.5) * 0.005)).toFixed(3)),
-      }));
-    }, 3000);
+      fetchDashboardData();
+    }, 5000);
 
     const data = [];
     for (let i = 15; i >= 0; i--) {
@@ -778,7 +805,7 @@ export default function Dashboard() {
             </div>
             <div className="logo-text">
               <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 600, letterSpacing: '0.02em', margin: 0 }}>Conduit</h1>
-              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.15em', opacity: 0.3, margin: 0 }}>MLOps Control Tower</p>
+              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.15em', opacity: 0.3, margin: 0 }}>{modelInfo.name} Tower</p>
             </div>
           </div>
 
