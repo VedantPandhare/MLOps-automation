@@ -8,6 +8,9 @@ import sys
 import time
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional
+import json
+import shutil
 
 # Robust path handling for absolute package imports
 # Ensure the parent directory is in sys.path so 'from app.xxx' works
@@ -183,7 +186,6 @@ async def list_projects():
                 name = item
                 if os.path.exists(metadata_path):
                     with open(metadata_path, 'r') as f:
-                        import json
                         try:
                             data = json.load(f)
                             name = data.get("model_name", item)
@@ -202,7 +204,6 @@ async def delete_project(project_id: str):
     if project_id == "fraud-detection":
         raise HTTPException(status_code=400, detail="Cannot delete the demo project")
         
-    import shutil
     models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
     project_path = os.path.join(models_dir, project_id)
     
@@ -229,7 +230,6 @@ async def model_info(project_id: Optional[str] = None):
     metadata_path = os.path.join(models_dir, project_id, "metadata.json")
     
     if os.path.exists(metadata_path):
-        import json
         try:
             with open(metadata_path, 'r') as f:
                 data = json.load(f)
