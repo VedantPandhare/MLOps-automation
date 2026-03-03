@@ -263,13 +263,14 @@ function InfrastructureItem({ icon, name, status }) {
   );
 }
 
-function PipelineView() {
+function PipelineView({ deployments = [] }) {
+  const latestDeploy = deployments[0] || { sha: "N/A", status: "idle" };
   const stages = [
     { id: "test", label: "Run Tests", icon: <CheckCircle2 size={18} />, duration: "1m 42s", status: 'success' },
     { id: "build", label: "Docker Build", icon: <CheckCircle2 size={18} />, duration: "3m 11s", status: 'success' },
     { id: "scan", label: "Security Scan", icon: <CheckCircle2 size={18} />, duration: "0m 58s", status: 'success' },
     { id: "staging", label: "Deploy Staging", icon: <CheckCircle2 size={18} />, duration: "2m 05s", status: 'success' },
-    { id: "prod", label: "Deploy Prod", icon: <Loader2 size={18} />, duration: "2m 33s", status: 'running' },
+    { id: "prod", label: "Deploy Prod", icon: latestDeploy.status === 'success' ? <CheckCircle2 size={18} /> : <Loader2 size={18} />, duration: latestDeploy.time || "---", status: latestDeploy.status || 'idle' },
   ];
 
   return (
@@ -279,12 +280,12 @@ function PipelineView() {
           <div>
             <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 600 }}>Main CI/CD Pipeline</h3>
             <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.4rem' }}>
-              SOURCE: <span style={{ color: 'var(--accent-blue)' }}>main</span> / commit <span style={{ color: 'rgba(255,255,255,0.6)' }}>a3f7c91</span>
+              SOURCE: <span style={{ color: 'var(--accent-blue)' }}>main</span> / commit <span style={{ color: 'rgba(255,255,255,0.6)' }}>{latestDeploy.sha}</span>
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--accent-orange)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' }}>
-            <div className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 10px currentColor' }} />
-            Pipeline Running
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: latestDeploy.status === 'success' ? 'var(--accent-green)' : 'var(--accent-orange)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' }}>
+            <div className={latestDeploy.status === 'success' ? "" : "pulse-dot"} style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', boxShadow: latestDeploy.status === 'success' ? 'none' : '0 0 10px currentColor' }} />
+            {latestDeploy.status === 'success' ? 'Pipeline Clear' : 'Pipeline Running'}
           </div>
         </div>
 
@@ -404,20 +405,8 @@ jobs:
   );
 }
 
-function HistoryView() {
-  const logs = [
-    { sha: "a3f7c91", env: "prod", status: "success", time: "2m ago", branch: "main", triggered: "push" },
-    { sha: "88be204", env: "staging", status: "success", time: "47m ago", branch: "develop", triggered: "push" },
-    { sha: "f12d330", env: "staging", status: "failed", time: "3h ago", branch: "feature/retrain", triggered: "PR" },
-    { sha: "c90a17e", env: "prod", status: "success", time: "1d ago", branch: "main", triggered: "push" },
-    { sha: "74bb019", env: "prod", status: "success", time: "3d ago", branch: "main", triggered: "schedule" },
-  ];
+function HistoryView({ logs = [], modelHistory = [] }) {
 
-  const modelHistory = [
-    { version: "v2.4.1", stage: "Production", accuracy: "93.2%", f1: "0.911", date: "2d ago", runs: "run_88c2f" },
-    { version: "v2.4.0", stage: "Archived", accuracy: "92.7%", f1: "0.905", date: "9d ago", runs: "run_77b1e" },
-    { version: "v2.3.2", stage: "Archived", accuracy: "91.9%", f1: "0.897", date: "23d ago", runs: "run_66a0d" },
-  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
@@ -567,7 +556,7 @@ function InferenceDemo() {
   return (
     <div className="grid animate-fade-in" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
       <div className="card" style={{ padding: '2.5rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)' }}>
-        <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 600, marginBottom: '2rem' }}>Transaction Simulation</h3>
+        <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 600, marginBottom: '2rem' }}>Feature Simulation</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '2rem' }}>
           {Object.entries(formData).map(([key, val]) => (
             <div key={key}>
@@ -602,7 +591,7 @@ function InferenceDemo() {
               background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444'
             }}
           >
-            HIGH RISK
+            HIGH ANOMALY
           </button>
           <button
             className="btn btn-secondary"
@@ -619,7 +608,7 @@ function InferenceDemo() {
               background: 'rgba(245, 158, 11, 0.05)', color: '#f59e0b'
             }}
           >
-            MEDIUM RISK
+            LOW ANOMALY
           </button>
           <button
             className="btn btn-secondary"
@@ -637,7 +626,7 @@ function InferenceDemo() {
             })}
             style={{ padding: '0.75rem', fontSize: '0.65rem' }}
           >
-            RESET LEGIT
+            RESET NORMAL
           </button>
         </div>
         <button id="process-btn" className="btn btn-primary" onClick={runPrediction} disabled={loading} style={{
@@ -673,7 +662,7 @@ function InferenceDemo() {
                 <span style={{ fontSize: '2rem', fontWeight: 700, fontFamily: "'Cormorant Garamond', serif" }}>{(result.fraud_probability * 100).toFixed(1)}%</span>
                 <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'DM Mono', monospace" }}>Risk Index</span>
               </div>
-              <h4 style={{ color: riskColors[result.risk_level], fontSize: '1.8rem', fontWeight: 600, marginBottom: '1rem', fontFamily: "'Cormorant Garamond', serif" }}>{result.is_fraud ? 'ALERT: FRAUD DETECTED' : 'VERIFIED: SYSTEM SAFE'}</h4>
+              <h4 style={{ color: riskColors[result.risk_level], fontSize: '1.8rem', fontWeight: 600, marginBottom: '1rem', fontFamily: "'Cormorant Garamond', serif" }}>{result.is_fraud ? 'ALERT: ANOMALY DETECTED' : 'VERIFIED: SYSTEM NORMAL'}</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Mono', monospace" }}>
                 <p>RISK LEVEL: <strong style={{ color: 'var(--text-primary)' }}>{result.risk_level}</strong></p>
                 <p>LATENCY: <strong style={{ color: 'var(--text-primary)' }}>{result.latency_ms.toFixed(2)}ms</strong></p>
@@ -721,7 +710,8 @@ export default function Dashboard() {
     }
   }, []);
 
-  const [modelInfo, setModelInfo] = useState({ name: 'Fraud Detection', version: '...', environment: '...' });
+  const [modelInfo, setModelInfo] = useState({ name: 'Fraud Detection', version: '...', environment: '...', architecture: '...', lastPush: '...' });
+  const [fullMetadata, setFullMetadata] = useState(null);
   const [healthStatus, setHealthStatus] = useState('Offline');
   const [chartData, setChartData] = useState([]);
 
@@ -734,15 +724,20 @@ export default function Dashboard() {
       const infoRes = await fetch(`${API_BASE_URL}/model/info`);
       if (infoRes.ok) {
         const data = await infoRes.json();
+        setFullMetadata(data);
         setModelInfo({
           name: data.model_name,
           version: data.version,
-          environment: data.environment
+          environment: data.environment,
+          architecture: data.architecture,
+          lastPush: data.last_push
         });
         setStats(prev => ({
           ...prev,
           accuracy: data.accuracy * (data.accuracy <= 1 ? 100 : 1),
-          f1: data.f1_score * (data.f1_score <= 1 ? 100 : 1)
+          f1: data.f1_score * (data.f1_score <= 1 ? 100 : 1),
+          latency: data.latency,
+          drift: data.drift
         }));
       }
     } catch (err) {
@@ -755,21 +750,25 @@ export default function Dashboard() {
     const interval = setInterval(() => {
       fetchDashboardData();
     }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
 
+  useEffect(() => {
     const data = [];
+    const baseAcc = stats.accuracy > 0 ? stats.accuracy : 94;
+    const baseF1 = stats.f1 > 0 ? stats.f1 : 90;
+
     for (let i = 15; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       data.push({
         date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        accuracy: 94 + Math.random() * 2,
-        f1: 90 + Math.random() * 2,
+        accuracy: baseAcc + (Math.random() - 0.5) * 2,
+        f1: baseF1 + (Math.random() - 0.5) * 2,
       });
     }
     setChartData(data);
-
-    return () => clearInterval(interval);
-  }, [fetchDashboardData]);
+  }, [stats.accuracy, stats.f1]);
 
   const tabs = [
     { id: 'overview', label: 'Monitor', icon: <BarChart3 size={18} /> },
@@ -862,9 +861,9 @@ export default function Dashboard() {
             "⬡ DOCKER BUILD SUCCESS · 3m11s",
             "▶ DEPLOYED TO PROD · 2m AGO",
             "◈ DRIFT SCORE 0.034 · NORMAL",
-            "⚡ AVG LATENCY 44ms · P99 112ms",
+            "⚡ AVG LATENCY " + (stats.latency || 44) + "ms · P99 " + ((stats.latency || 44) * 2.5).toFixed(0) + "ms",
             "◎ 1,847 REQUESTS / MIN",
-            "✓ MODEL ACCURACY 93.2%",
+            "✓ MODEL ACCURACY " + stats.accuracy.toFixed(1) + "%",
             "⬡ GKE PODS: 3/3 RUNNING",
           ]).map((item, i) => (
             <span key={i} style={{ padding: '0 40px', borderRight: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' }}>{item}</span>
@@ -946,8 +945,8 @@ export default function Dashboard() {
                     {[
                       { l: "Registry Version", v: modelInfo.version, c: 'var(--accent-blue)' },
                       { l: "Environment", v: modelInfo.environment, c: '#fff' },
-                      { l: "Architecture", v: "Scikit-Learn Ensemble", c: '#fff' },
-                      { l: "Last Push", v: "12h 45m ago", c: '#fff' }
+                      { l: "Architecture", v: modelInfo.architecture, c: '#fff' },
+                      { l: "Last Push", v: modelInfo.lastPush, c: '#fff' }
                     ].map((item, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontFamily: "'DM Mono', monospace" }}>{item.l}</span>
@@ -962,8 +961,8 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'inference' && <InferenceDemo />}
-        {activeTab === 'pipeline' && <PipelineView />}
-        {activeTab === 'history' && <HistoryView />}
+        {activeTab === 'pipeline' && <PipelineView deployments={fullMetadata?.deployments} />}
+        {activeTab === 'history' && <HistoryView logs={fullMetadata?.deployments} modelHistory={fullMetadata?.history} />}
       </main>
 
       <OnboardingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
