@@ -1071,7 +1071,31 @@ export default function Dashboard() {
           </div>
         )}
 
-        {activeTab === 'inference' && <InferenceDemo />}
+        {activeTab === 'inference' && (
+          <div style={{ position: 'relative', width: '100%', minHeight: '600px' }}>
+            {selectedProjectId !== 'fraud-detection' && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 10,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)',
+                borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)',
+                textAlign: 'center', padding: '2rem'
+              }}>
+                <div style={{ padding: '2rem', background: 'rgba(14,14,14,0.8)', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', maxWidth: '450px' }}>
+                  <AlertCircle size={48} color="var(--accent-orange)" style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
+                  <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', fontWeight: 600, color: '#fff', marginBottom: '1rem' }}>Simulation Restricted</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+                    Simulation inference is only for the <strong>Demo Model</strong>. Imported repository models require separate infrastructure for real-time live testing.
+                  </p>
+                  <button className="btn btn-secondary" onClick={() => setSelectedProjectId('fraud-detection')} style={{ padding: '0.8rem 2rem', fontSize: '0.85rem' }}>Switch to Demo Model</button>
+                </div>
+              </div>
+            )}
+            <div style={{ opacity: selectedProjectId === 'fraud-detection' ? 1 : 0.4, filter: selectedProjectId === 'fraud-detection' ? 'none' : 'blur(4px)', transition: 'all 0.5s ease', pointerEvents: selectedProjectId === 'fraud-detection' ? 'auto' : 'none' }}>
+              <InferenceDemo />
+            </div>
+          </div>
+        )}
         {activeTab === 'pipeline' && <PipelineView deployments={fullMetadata?.deployments} />}
         {activeTab === 'history' && <HistoryView logs={fullMetadata?.deployments} modelHistory={fullMetadata?.history} />}
       </main>
