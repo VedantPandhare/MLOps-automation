@@ -29,9 +29,15 @@ class GithubOnboardingService:
         
         # 1. Validate Repo (Check for Dockerfile)
         async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{self.base_url}/repos/{owner}/{repo}/contents/Dockerfile", headers=self.headers)
+            url = f"{self.base_url}/repos/{owner}/{repo}/contents/Dockerfile"
+            logger.info(f"🔍 Validating repository: {owner}/{repo} at {url}")
+            resp = await client.get(url, headers=self.headers)
+            
             if resp.status_code != 200:
-                return {"success": False, "message": "Dockerfile not found in repository root. Validation failed."}
+                logger.error(f"❌ Validation failed for {owner}/{repo}: {resp.status_code} - {resp.text}")
+                return {"success": False, "message": f"Dockerfile not found in repository root ({owner}/{repo}). Validation failed."}
+            
+            logger.info(f"✅ Dockerfile found in {owner}/{repo}")
 
             # 2. Inject Workflow File
             workflow_path = ".github/workflows/main.yml"
