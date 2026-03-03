@@ -14,6 +14,9 @@ import {
   Globe,
   RefreshCw,
   Cpu,
+  FolderOpen,
+  ChevronDown,
+  Trash2,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -699,6 +702,9 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [stats, setStats] = useState({ accuracy: 0, f1: 0, latency: 0, drift: 0 });
+  const [projects, setProjects] = useState([{ id: 'fraud-detection', name: 'Demo - Fraud Detection' }]);
+  const [selectedProjectId, setSelectedProjectId] = useState('fraud-detection');
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -714,14 +720,36 @@ export default function Dashboard() {
   const [fullMetadata, setFullMetadata] = useState(null);
   const [healthStatus, setHealthStatus] = useState('Offline');
   const [chartData, setChartData] = useState([]);
+  const projectDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (projectDropdownRef.current && !projectDropdownRef.current.contains(event.target)) {
+        setIsProjectDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchDashboardData = useCallback(async () => {
     try {
+      // Fetch project list
+      const projectsRes = await fetch(`${API_BASE_URL}/projects`);
+      if (projectsRes.ok) {
+        const pList = await projectsRes.json();
+        setProjects(pList);
+        // If selected project no longer exists, default to first or demo
+        if (selectedProjectId && !pList.find(p => p.id === selectedProjectId)) {
+          setSelectedProjectId(pList[0]?.id || 'fraud-detection');
+        }
+      }
+
       const healthRes = await fetch(`${API_BASE_URL}/health`);
       if (healthRes.ok) setHealthStatus('Operational');
       else setHealthStatus('Warning');
 
-      const infoRes = await fetch(`${API_BASE_URL}/model/info`);
+      const infoRes = await fetch(`${API_BASE_URL}/model/info?project_id=${selectedProjectId}`);
       if (infoRes.ok) {
         const data = await infoRes.json();
         setFullMetadata(data);
@@ -743,7 +771,21 @@ export default function Dashboard() {
     } catch (err) {
       setHealthStatus('Offline');
     }
-  }, []);
+  }, [selectedProjectId]);
+
+  const removeProject = async (id, e) => {
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to remove project "${projects.find(p => p.id === id)?.name}"?`)) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/projects/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchDashboardData();
+        }
+      } catch (err) {
+        alert("Failed to remove project");
+      }
+    }
+  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -808,7 +850,76 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <nav style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+          <nav style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)', position: 'relative' }}>
+            {/* Projects Dropdown */}
+            <div style={{ position: 'relative' }} ref={projectDropdownRef}>
+              <button
+                onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 1.2rem',
+                  borderRadius: '6px', border: 'none', cursor: 'pointer',
+                  background: isProjectDropdownOpen ? 'rgba(255,255,255,0.05)' : 'transparent',
+                  color: '#fff',
+                  transition: 'all 0.2s ease',
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: '0.85rem'
+                }}
+              >
+                <FolderOpen size={18} />
+                <span>Projects</span>
+                <ChevronDown size={14} style={{ transform: isProjectDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+
+              {isProjectDropdownOpen && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, marginTop: '8px',
+                  background: '#0e0e0e', border: '1px solid var(--border)',
+                  borderRadius: '8px', minWidth: '240px', z_index: 100,
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)', overflow: 'hidden'
+                }}>
+                  {projects.map(p => (
+                    <div
+                      key={p.id}
+                      onClick={() => { setSelectedProjectId(p.id); setIsProjectDropdownOpen(false); }}
+                      style={{
+                        padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        background: selectedProjectId === p.id ? 'rgba(255,255,255,0.05)' : 'transparent',
+                        cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = selectedProjectId === p.id ? 'rgba(255,255,255,0.05)' : 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: selectedProjectId === p.id ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)' }} />
+                        <span style={{ fontSize: '0.8rem', color: selectedProjectId === p.id ? '#fff' : 'rgba(255,255,255,0.5)' }}>{p.name}</span>
+                      </div>
+                      {p.id !== 'fraud-detection' && (
+                        <button
+                          onClick={(e) => removeProject(p.id, e)}
+                          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.2)', cursor: 'pointer', padding: '4px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-red)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.2)'}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <div
+                    onClick={() => { setIsModalOpen(true); setIsProjectDropdownOpen(false); }}
+                    style={{ padding: '1rem', textAlign: 'center', color: 'var(--accent-blue)', fontSize: '0.75rem', cursor: 'pointer', opacity: 0.8 }}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                  >
+                    + Import New Project
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ width: '1px', background: 'var(--border)', margin: '4px 2px' }} />
+
             {tabs.map(tab => {
               const isActive = activeTab === tab.id;
               return (

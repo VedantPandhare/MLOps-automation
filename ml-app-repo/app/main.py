@@ -199,6 +199,9 @@ async def list_projects():
 @app.delete("/projects/{project_id}", tags=["Projects"])
 async def delete_project(project_id: str):
     """Delete a project and its metadata."""
+    if project_id == "fraud-detection":
+        raise HTTPException(status_code=400, detail="Cannot delete the demo project")
+        
     import shutil
     models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
     project_path = os.path.join(models_dir, project_id)
