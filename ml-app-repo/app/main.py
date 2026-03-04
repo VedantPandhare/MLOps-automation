@@ -89,21 +89,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "https://ml-ops-automation.vercel.app",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
 # ─── Middleware ────────────────────────────────────────────────────────────────
 @app.middleware("http")
 async def track_metrics(request: Request, call_next):
@@ -119,6 +104,17 @@ async def track_metrics(request: Request, call_next):
     ).inc()
     ACTIVE_REQUESTS.dec()
     return response
+
+
+# ─── CORS (Outermost Layer) ────────────────────────────────────────────────────
+# Note: Added last to ensure it wraps all other middleware and handles preflights first
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
