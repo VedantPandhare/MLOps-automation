@@ -131,9 +131,33 @@ jobs:
             commit_resp = await client.put(f"{self.base_url}/repos/{owner}/{repo}/contents/{workflow_path}", headers=self.headers, json=data)
             
             if commit_resp.status_code in [200, 201]:
+                # 3. Create local metadata so it shows in dashboard immediately
+                try:
+                    models_dir = os.path.join(os.path.dirname(__file__), "..", "models", repo)
+                    os.makedirs(models_dir, exist_ok=True)
+                    metadata_path = os.path.join(models_dir, "metadata.json")
+                    import json
+                    with open(metadata_path, 'w') as f:
+                        json.dump({
+                            "model_name": repo.replace("-", " ").replace("_", " ").title(),
+                            "version": "v1.0.0 (Onboarding)",
+                            "accuracy": 0.0,
+                            "f1_score": 0.0,
+                            "latency": 0.0,
+                            "drift": 0.0,
+                            "environment": "Development",
+                            "architecture": "Awaiting Deployment",
+                            "last_push": "Just now",
+                            "history": [],
+                            "deployments": []
+                        }, f, indent=4)
+                    logger.info(f"✅ Local project metadata created for {repo}")
+                except Exception as e:
+                    logger.error(f"⚠️ Failed to create local metadata for {repo}: {e}")
+
                 return {
                     "success": True, 
-                    "message": f"Successfully onboarded {owner}/{repo}. Workflow injected.",
+                    "message": f"Successfully onboarded {repo}. Workflow injected.",
                     "injected_workflow": workflow_path
                 }
             else:

@@ -1,0 +1,13 @@
+{
+    "model_name": "Test Mlops",
+    "version": "v1.0.0 (Onboarding)",
+    "accuracy": 0.0,
+    "f1_score": 0.0,
+    "latency": 0.0,
+    "drift": 0.0,
+    "environment": "Development",
+    "architecture": "Awaiting Deployment",
+    "last_push": "Just now",
+    "history": [],
+    "deployments": []
+}
