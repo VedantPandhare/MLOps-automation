@@ -1,13 +1,47 @@
 {
     "model_name": "Test Mlops",
-    "version": "v1.0.0 (Onboarding)",
-    "accuracy": 0.0,
-    "f1_score": 0.0,
-    "latency": 0.0,
-    "drift": 0.0,
+    "version": "v1.1.0 (Training)",
+    "accuracy": 0.915,
+    "f1_score": 0.898,
+    "latency": 4.8,
+    "drift": 0.03,
     "environment": "Development",
-    "architecture": "Awaiting Deployment",
-    "last_push": "Just now",
-    "history": [],
-    "deployments": []
+    "architecture": "Baseline Scikit-Learn",
+    "last_push": "10m ago",
+    "history": [
+        {
+            "version": "v1.1.0",
+            "stage": "Development",
+            "accuracy": "91.5%",
+            "f1": "0.898",
+            "date": "10m ago",
+            "runs": "run_a1b2c"
+        },
+        {
+            "version": "v1.0.0",
+            "stage": "Archived",
+            "accuracy": "88.2%",
+            "f1": "0.865",
+            "date": "1h ago",
+            "runs": "run_initial"
+        }
+    ],
+    "deployments": [
+        {
+            "sha": "a1b2c3d",
+            "env": "staging",
+            "status": "success",
+            "time": "8m ago",
+            "branch": "main",
+            "triggered": "push"
+        },
+        {
+            "sha": "e5f6g7h",
+            "env": "prod",
+            "status": "idle",
+            "time": "---",
+            "branch": "main",
+            "triggered": "N/A"
+        }
+    ]
 }
