@@ -20,9 +20,13 @@ class GithubOnboardingService:
         }
 
     def _parse_repo_url(self, repo_url: str):
-        # Extracts owner and repo name from URL
+        # Extracts owner and repo name from URL, stripping .git if present
         parts = repo_url.rstrip("/").split("/")
-        return parts[-2], parts[-1]
+        owner = parts[-2]
+        repo = parts[-1]
+        if repo.endswith(".git"):
+            repo = repo[:-4]
+        return owner, repo
 
     async def onboard_repo(self, repo_url: str, image_name: Optional[str] = None):
         if not self.token or self.token == "your_pat_token_here":
@@ -37,10 +41,30 @@ class GithubOnboardingService:
             resp = await client.get(url, headers=self.headers)
             
             if resp.status_code != 200:
-                logger.error(f"❌ Validation failed for {owner}/{repo}: {resp.status_code} - {resp.text}")
-                return {"success": False, "message": f"Dockerfile not found in repository root ({owner}/{repo}). Validation failed."}
-            
-            logger.info(f"✅ Dockerfile found in {owner}/{repo}")
+                logger.warning(f"⚠️ Dockerfile not found in {owner}/{repo}. Generating a standard Python Dockerfile.")
+                # Inject a standard Dockerfile
+                dockerfile_content = """FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt || true
+COPY . .
+EXPOSE 8000
+CMD ["python", "main.py"]
+"""
+                encoded_docker_content = base64.b64encode(dockerfile_content.encode()).decode()
+                docker_data = {
+                    "message": "chore: auto-generate standard Dockerfile",
+                    "content": encoded_docker_content,
+                    "branch": "main"
+                }
+                docker_resp = await client.put(f"{self.base_url}/repos/{owner}/{repo}/contents/Dockerfile", headers=self.headers, json=docker_data)
+                if docker_resp.status_code not in [200, 201]:
+                    logger.error(f"❌ Failed to inject Dockerfile: {docker_resp.text}")
+                    # We continue anyway, the workflow might fail but we did our best to onboard
+                else:
+                    logger.info(f"✅ Standard Dockerfile injected into {owner}/{repo}")
+            else:
+                logger.info(f"✅ Dockerfile found in {owner}/{repo}")
 
             # 2. Inject Workflow File
             workflow_path = ".github/workflows/main.yml"
