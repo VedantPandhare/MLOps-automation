@@ -4,7 +4,10 @@ import base64
 from typing import Optional
 from dotenv import load_dotenv
 
+import logging
+
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 class GithubOnboardingService:
     def __init__(self):
