@@ -1,10 +1,10 @@
-# ⚡ Standardized MLOps Project
+# Standardized MLOps Project
 
 > **A production-ready MLOps framework** featuring standardized CI/CD pipelines, automated model monitoring, and a real-time dashboard.
 
 ---
 
-## 🏗️ Project Overview
+##  Project Overview
 
 This project demonstrates a multi-component MLOps architecture using a **Shared Library Pattern** for GitHub Actions.
 
@@ -14,7 +14,7 @@ This project demonstrates a multi-component MLOps architecture using a **Shared 
 
 ---
 
-## 🚀 Setup Guide
+## Setup Guide
 
 Follow these steps to run the application locally.
 
@@ -68,7 +68,7 @@ Dashboard: [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 *   **Backend**: FastAPI, MLflow, DVC, Pytest
 *   **Frontend**: Next.js, React, Tailwind CSS, Recharts
