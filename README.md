@@ -76,7 +76,7 @@ Dashboard: [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 🌊 Full CI/CD Simulation (Optional)
+##  Full CI/CD Simulation (Optional)
 
 To simulate the entire automated deployment pipeline, you need to configure infrastructure secrets in your **GitHub Repository Settings**.
 
@@ -153,7 +153,7 @@ Once your secrets are configured, any push to the `develop` or `main` branches w
 
 ---
 
-## 🤖 Testing the "Import Repo" Feature
+## Testing the "Import Repo" Feature
 
 The **Onboarding Service** allows you to bring any Python repository into this standardized pipeline automatically.
 
@@ -178,9 +178,3 @@ curl -X POST http://localhost:8000/onboard \
          }'
 ```
 
----
-
-## 📊 Documentation
-
-- [Detailed Onboarding Guide](file:///d:/MLops/ONBOARDING_GUIDE.md) - How to migrate new repos to this pipeline.
-- [Project Architecture](file:///d:/MLops/AUTO_ONBOARDING_ARCH.md) - Deep dive into the automation logic.
