@@ -719,6 +719,7 @@ export default function Dashboard() {
   const [modelInfo, setModelInfo] = useState({ name: 'Fraud Detection', version: '...', environment: '...', architecture: '...', lastPush: '...' });
   const [fullMetadata, setFullMetadata] = useState(null);
   const [healthStatus, setHealthStatus] = useState('Offline');
+  const [backendStatus, setBackendStatus] = useState('unknown'); // 'unknown' | 'waking' | 'online' | 'offline'
   const [chartData, setChartData] = useState([]);
   const projectDropdownRef = useRef(null);
 
@@ -734,12 +735,27 @@ export default function Dashboard() {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      // Fetch project list
+      // Ping first to detect cold-start; mark as waking if backend is slow to respond
+      const pingController = new AbortController();
+      const pingTimeout = setTimeout(() => {
+        setBackendStatus('waking');
+        pingController.abort();
+      }, 3000);
+
+      try {
+        const pingRes = await fetch(`${API_BASE_URL}/ping`, { signal: pingController.signal });
+        clearTimeout(pingTimeout);
+        if (pingRes.ok) setBackendStatus('online');
+      } catch {
+        clearTimeout(pingTimeout);
+        // If aborted we already set 'waking'; wait for next poll cycle
+        return;
+      }
+
       const projectsRes = await fetch(`${API_BASE_URL}/projects`);
       if (projectsRes.ok) {
         const pList = await projectsRes.json();
         setProjects(pList);
-        // If selected project no longer exists, default to first or demo
         if (selectedProjectId && !pList.find(p => p.id === selectedProjectId)) {
           setSelectedProjectId(pList[0]?.id || 'fraud-detection');
         }
@@ -769,6 +785,7 @@ export default function Dashboard() {
         }));
       }
     } catch (err) {
+      setBackendStatus('offline');
       setHealthStatus('Offline');
     }
   }, [selectedProjectId]);
@@ -789,9 +806,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(() => {
-      fetchDashboardData();
-    }, 5000);
+    // 30s interval — aggressive enough to feel live, gentle enough for free-tier hosting
+    const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
 
@@ -833,6 +849,24 @@ export default function Dashboard() {
         }}
       />
       <GrainOverlay />
+
+      {(backendStatus === 'waking' || backendStatus === 'offline') && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+          background: backendStatus === 'waking' ? 'rgba(234, 179, 8, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+          borderBottom: `1px solid ${backendStatus === 'waking' ? 'rgba(234,179,8,0.3)' : 'rgba(239,68,68,0.3)'}`,
+          padding: '0.5rem 2rem',
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          fontFamily: "'DM Mono', monospace", fontSize: '0.75rem',
+          color: backendStatus === 'waking' ? '#fbbf24' : '#f87171',
+        }}>
+          {backendStatus === 'waking' ? (
+            <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Backend is waking up on Render free tier — this takes ~30 seconds. Dashboard will refresh automatically.</>
+          ) : (
+            <><AlertCircle size={14} />Backend is offline. Check your Render deployment.</>
+          )}
+        </div>
+      )}
 
       <header className="header" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(14, 14, 14, 0.8)', backdropFilter: 'blur(20px)', position: 'relative', zIndex: 50 }}>
         <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2rem', height: '80px' }}>

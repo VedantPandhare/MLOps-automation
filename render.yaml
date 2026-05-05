@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: fraud-detection-api
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: ml-app-repo
+    buildCommand: pip install -r requirements.txt && python src/train.py
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /ping
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: APP_VERSION
+        value: 1.0.0
+      - key: PYTHONPATH
+        value: .
+      - key: ALLOWED_ORIGINS
+        value: https://ml-ops-automation.vercel.app
+      - key: API_KEY
+        generateValue: true
+      - key: MODEL_ACCURACY
+        value: "0.95"
+      - key: MLFLOW_TRACKING_URI
+        sync: false

@@ -4,7 +4,7 @@ Request and response models with validation.
 """
 
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 
 class PredictionRequest(BaseModel):
@@ -45,11 +45,15 @@ class PredictionResponse(BaseModel):
 
     model_config = ConfigDict(protected_namespaces=())
 
+    prediction_id: str = Field(..., description="Unique ID for this prediction (use in /feedback)")
     is_fraud: bool = Field(..., description="True if transaction is predicted as fraud")
     fraud_probability: float = Field(..., ge=0, le=1, description="Probability of fraud (0-1)")
     risk_level: str = Field(..., description="Risk level: MINIMAL, LOW, MEDIUM, HIGH, CRITICAL")
     latency_ms: float = Field(..., description="Model inference latency in milliseconds")
     model_version: str = Field(default="1.0.0", description="Model version used for prediction")
+    top_features: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="Top 3 features driving this prediction"
+    )
 
 
 class BatchPredictionRequest(BaseModel):
@@ -90,6 +94,21 @@ class HealthResponse(BaseModel):
     model_loaded: bool
     version: str
     environment: str
+
+
+class FeedbackRequest(BaseModel):
+    """Record the actual outcome of a previous prediction."""
+
+    prediction_id: str = Field(..., description="The prediction_id returned by /predict")
+    actual_label: int = Field(..., ge=0, le=1, description="Actual outcome: 1=fraud, 0=legit")
+    notes: Optional[str] = Field(default=None, description="Optional context or notes")
+
+
+class FeedbackResponse(BaseModel):
+    """Response after submitting feedback."""
+
+    success: bool
+    message: str
 
 
 class OnboardRequest(BaseModel):

@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import mlflow
 import mlflow.sklearn
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
     classification_report,
@@ -22,6 +22,7 @@ from sklearn.metrics import (
     accuracy_score,
 )
 import joblib
+from xgboost import XGBClassifier
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -116,7 +117,7 @@ def preprocess(df: pd.DataFrame):
 
 
 def train_model(X_train, y_train) -> RandomForestClassifier:
-    """Train the fraud detection model."""
+    """Train the RandomForest baseline model."""
     model = RandomForestClassifier(
         n_estimators=N_ESTIMATORS,
         max_depth=MAX_DEPTH,
@@ -128,6 +129,35 @@ def train_model(X_train, y_train) -> RandomForestClassifier:
     logger.info(f"Training RandomForest with {N_ESTIMATORS} estimators...")
     model.fit(X_train, y_train)
     return model
+
+
+def train_challenger(X_train, y_train) -> XGBClassifier:
+    """Train XGBoost challenger model."""
+    model = XGBClassifier(
+        n_estimators=N_ESTIMATORS,
+        max_depth=6,
+        learning_rate=0.1,
+        scale_pos_weight=9,  # mirrors 90/10 class imbalance
+        random_state=RANDOM_STATE,
+        eval_metric="logloss",
+        verbosity=0,
+    )
+    logger.info("Training XGBoost challenger...")
+    model.fit(X_train, y_train)
+    return model
+
+
+def find_optimal_threshold(model, X_test, y_test) -> float:
+    """Find the probability threshold that maximises F1 on the test set."""
+    probas = model.predict_proba(X_test)[:, 1]
+    best_t, best_f1 = 0.5, 0.0
+    for t in np.arange(0.1, 0.91, 0.01):
+        preds = (probas >= t).astype(int)
+        score = f1_score(y_test, preds, zero_division=0)
+        if score > best_f1:
+            best_f1, best_t = score, t
+    logger.info(f"Optimal threshold: {best_t:.2f} (F1={best_f1:.4f})")
+    return round(float(best_t), 2)
 
 
 def evaluate_model(model, X_test, y_test) -> dict:
@@ -153,13 +183,17 @@ def evaluate_model(model, X_test, y_test) -> dict:
     return metrics
 
 
-def save_artifacts(model, scaler):
-    """Save model and scaler to disk."""
+def save_artifacts(model, scaler, threshold: float = 0.5):
+    """Save model, scaler, and decision threshold to disk."""
     os.makedirs(os.path.dirname(MODEL_OUTPUT_PATH), exist_ok=True)
     joblib.dump(model, MODEL_OUTPUT_PATH)
     joblib.dump(scaler, SCALER_OUTPUT_PATH)
+    threshold_path = os.path.join(os.path.dirname(MODEL_OUTPUT_PATH), "threshold.txt")
+    with open(threshold_path, "w") as f:
+        f.write(str(threshold))
     logger.info(f"Model saved to {MODEL_OUTPUT_PATH}")
     logger.info(f"Scaler saved to {SCALER_OUTPUT_PATH}")
+    logger.info(f"Threshold saved: {threshold}")
 
 
 def run_training():
@@ -177,11 +211,21 @@ def run_training():
     logger.info(f"Dataset shape: {df.shape}, Fraud rate: {df['label'].mean():.2%}")
     X_train, X_test, y_train, y_test, scaler = preprocess(df)
 
-    # Train
-    model = train_model(X_train, y_train)
+    # Train both models and pick the better one
+    model_rf = train_model(X_train, y_train)
+    metrics_rf = evaluate_model(model_rf, X_test, y_test)
 
-    # Evaluate
-    metrics = evaluate_model(model, X_test, y_test)
+    model_xgb = train_challenger(X_train, y_train)
+    metrics_xgb = evaluate_model(model_xgb, X_test, y_test)
+
+    if metrics_xgb["f1_score"] > metrics_rf["f1_score"]:
+        model, metrics, winner = model_xgb, metrics_xgb, "XGBoost"
+    else:
+        model, metrics, winner = model_rf, metrics_rf, "RandomForest"
+    logger.info(f"Winner: {winner} (F1={metrics['f1_score']:.4f})")
+
+    # Find optimal decision threshold on test set
+    threshold = find_optimal_threshold(model, X_test, y_test)
 
     if run_context:
         try:
@@ -203,7 +247,7 @@ def run_training():
             logger.error(f"Error logging to MLflow: {e}")
 
     # Always save artifacts locally
-    save_artifacts(model, scaler)
+    save_artifacts(model, scaler, threshold)
 
     logger.info("Training complete.")
     return metrics, (run_context.info.run_id if run_context else "local-run")

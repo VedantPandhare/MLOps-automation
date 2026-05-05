@@ -4,6 +4,7 @@ Loads the trained fraud detection model and provides prediction utilities.
 """
 
 import os
+import uuid
 import logging
 import numpy as np
 import joblib
@@ -34,11 +35,36 @@ FEATURE_COLUMNS = [
 # Singleton model cache
 _model = None
 _scaler = None
+_threshold = 0.5  # overridden by models/threshold.txt if present
+
+
+def _load_threshold() -> float:
+    """Load optimal decision threshold saved during training."""
+    threshold_path = os.path.join(ROOT_DIR, "models", "threshold.txt")
+    if os.path.exists(threshold_path):
+        try:
+            with open(threshold_path) as f:
+                return float(f.read().strip())
+        except Exception:
+            pass
+    return 0.5
+
+
+def _explain(model, feature_vector_scaled: np.ndarray) -> List[Dict[str, Any]]:
+    """Return top-3 contributing features using importance × |scaled value|."""
+    if not hasattr(model, "feature_importances_"):
+        return []
+    contributions = model.feature_importances_ * np.abs(feature_vector_scaled[0])
+    top_idx = np.argsort(contributions)[::-1][:3]
+    return [
+        {"feature": FEATURE_COLUMNS[i], "contribution": round(float(contributions[i]), 4)}
+        for i in top_idx
+    ]
 
 
 def load_model():
-    """Load model and scaler from disk (singleton pattern)."""
-    global _model, _scaler
+    """Load model, scaler, and threshold from disk (singleton pattern)."""
+    global _model, _scaler, _threshold
     if _model is None:
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(
@@ -47,7 +73,8 @@ def load_model():
         logger.info(f"Loading model from {MODEL_PATH}")
         _model = joblib.load(MODEL_PATH)
         _scaler = joblib.load(SCALER_PATH)
-        logger.info("Model and scaler loaded successfully.")
+        _threshold = _load_threshold()
+        logger.info(f"Model loaded. Decision threshold: {_threshold}")
     return _model, _scaler
 
 
@@ -70,11 +97,10 @@ def predict(features: Dict[str, Any]) -> Dict[str, Any]:
     feature_vector_scaled = scaler.transform(feature_vector)
 
     start = time.perf_counter()
-    prediction = int(model.predict(feature_vector_scaled)[0])
     fraud_probability = float(model.predict_proba(feature_vector_scaled)[0][1])
+    prediction = int(fraud_probability >= _threshold)
     latency_ms = round((time.perf_counter() - start) * 1000, 2)
 
-    # Risk level classification
     if fraud_probability >= 0.8:
         risk_level = "CRITICAL"
     elif fraud_probability >= 0.6:
@@ -87,11 +113,13 @@ def predict(features: Dict[str, Any]) -> Dict[str, Any]:
         risk_level = "MINIMAL"
 
     return {
+        "prediction_id": str(uuid.uuid4()),
         "is_fraud": bool(prediction),
         "fraud_probability": round(fraud_probability, 4),
         "risk_level": risk_level,
         "latency_ms": latency_ms,
         "model_version": getattr(model, "_mlflow_version", "1.0.0"),
+        "top_features": _explain(model, feature_vector_scaled),
     }
 
 

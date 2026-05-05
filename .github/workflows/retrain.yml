@@ -128,6 +128,63 @@ jobs:
           path: ml-app-repo/models/
           retention-days: 7
 
+  # ─── Step 2.5: Drift Detection ───────────────────────────────────────────────
+  drift-check:
+    name: 📈 Data Drift Detection
+    needs: pull-data
+    runs-on: ubuntu-latest
+    outputs:
+      drift-detected: ${{ steps.drift.outputs.drift_detected }}
+      drift-score: ${{ steps.drift.outputs.drift_score }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: pip install -r ml-app-repo/requirements.txt
+
+      - name: Download Training Data
+        uses: actions/download-artifact@v4
+        with:
+          name: training-data
+          path: ml-app-repo/data/
+
+      - name: Run Drift Detection
+        id: drift
+        env:
+          DRIFT_THRESHOLD: "0.15"
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/ml-app-repo
+          python -c "
+          import sys, json
+          sys.path.append('ml-app-repo')
+          from monitoring.evidently_report import check_drift
+          try:
+              result = check_drift('ml-app-repo/data/fraud_dataset.csv')
+              print('drift_detected=false')
+              print(f'drift_score={result[\"drift_score\"]}')
+          except SystemExit:
+              print('drift_detected=true')
+          " | tee drift_output.txt || true
+          DRIFT=$(grep "drift_detected=" drift_output.txt | tail -1 | cut -d= -f2)
+          SCORE=$(grep "drift_score=" drift_output.txt | tail -1 | cut -d= -f2 || echo "0")
+          echo "drift_detected=${DRIFT:-false}" >> $GITHUB_OUTPUT
+          echo "drift_score=${SCORE:-0}" >> $GITHUB_OUTPUT
+          echo "Drift detected: ${DRIFT:-false} (score: ${SCORE:-0})"
+
+      - name: Upload Drift Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: ml-app-repo/monitoring/reports/
+          if-no-files-found: ignore
+
   # ─── Step 3: Evaluate — Compare vs Production ─────────────────────────────
   evaluate:
     name: 📊 Evaluate vs Production

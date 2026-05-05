@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from evidently.report import Report
-from evidently.metric_preset import DataDriftPreset, ClassificationPreset
+from evidently.metric_preset import DataDriftPreset
 from evidently.metrics import DatasetDriftMetric, DatasetMissingValuesMetric
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -119,6 +119,35 @@ def check_and_alert(drift_result: dict):
         # or send Slack alert via webhook
     else:
         logger.info(f"✅ Drift within acceptable range: {drift_result['drift_score']}")
+
+
+def check_drift(data_path: str, drift_factor: float = 0.0) -> dict:
+    """
+    CI-friendly entry point: compare reference distribution against current data file.
+    Returns a result dict with drift_detected and drift_share keys.
+    Exits with code 1 if drift exceeds threshold (so CI can catch it).
+    """
+    import sys as _sys
+
+    reference = generate_reference_data()
+
+    if os.path.exists(data_path):
+        current = pd.read_csv(data_path)[FEATURE_COLUMNS + ["label"]] if "label" in pd.read_csv(data_path, nrows=1).columns else pd.read_csv(data_path)
+    else:
+        logger.warning("Data file not found at %s — using synthetic current data", data_path)
+        current = generate_current_data(drift_factor=drift_factor)
+
+    result = run_drift_report(reference, current)
+    check_and_alert(result)
+
+    # Expose drift_share for the CI step output
+    result["drift_share"] = result["drift_score"]
+
+    if result["should_retrain"]:
+        logger.warning("Drift threshold exceeded — retraining recommended")
+        _sys.exit(1)
+
+    return result
 
 
 if __name__ == "__main__":

@@ -6,24 +6,26 @@ Serves real-time predictions with Prometheus metrics and health checks.
 import os
 import sys
 import time
+import json
 import logging
+import shutil
 from contextlib import asynccontextmanager
 from typing import Optional
-import json
-import shutil
 
 # Robust path handling for absolute package imports
-# Ensure the parent directory is in sys.path so 'from app.xxx' works
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Security, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.schemas import (
     PredictionRequest,
@@ -31,20 +33,47 @@ from app.schemas import (
     BatchPredictionRequest,
     BatchPredictionResponse,
     HealthResponse,
+    FeedbackRequest,
+    FeedbackResponse,
     OnboardRequest,
     OnboardResponse,
 )
 from app.onboarding import GithubOnboardingService
 
-# Add src to path for imports
-import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 from predict import predict, batch_predict, load_model
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# ─── Structured JSON Logging ──────────────────────────────────────────────────
+class _JsonFormatter(logging.Formatter):
+    def format(self, record):
+        payload = {
+            "time": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload)
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_JsonFormatter())
+logging.basicConfig(handlers=[_handler], level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
-# ─── Prometheus Metrics ────────────────────────────────────────────────────────
+# ─── Rate Limiter ─────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+
+# ─── API Key Auth ─────────────────────────────────────────────────────────────
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def require_api_key(api_key: str = Security(_api_key_header)):
+    """Enforce X-API-Key on sensitive endpoints. Skipped if API_KEY env var is unset."""
+    expected = os.getenv("API_KEY")
+    if expected and api_key != expected:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key.")
+
+# ─── Prometheus Metrics ───────────────────────────────────────────────────────
 REQUEST_COUNT = Counter(
     "fraud_api_requests_total",
     "Total number of prediction requests",
@@ -64,22 +93,21 @@ FRAUD_PREDICTIONS = Counter(
 MODEL_ACCURACY = Gauge("fraud_model_accuracy", "Current model accuracy")
 ACTIVE_REQUESTS = Gauge("fraud_api_active_requests", "Number of active requests")
 
-# ─── App Lifecycle ─────────────────────────────────────────────────────────────
+# ─── App Lifecycle ────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load model on startup."""
-    logger.info("🚀 Starting Fraud Detection API...")
+    logger.info("Starting Fraud Detection API")
     try:
         load_model()
         MODEL_ACCURACY.set(float(os.getenv("MODEL_ACCURACY", "0.95")))
-        logger.info("✅ Model loaded successfully")
+        logger.info("Model loaded successfully")
     except FileNotFoundError:
-        logger.warning("⚠️  Model not found. API will start but predictions will fail.")
+        logger.warning("Model not found — predictions will fail until model is trained")
     yield
-    logger.info("Shutting down Fraud Detection API...")
+    logger.info("Shutting down Fraud Detection API")
 
 
-# ─── FastAPI App ───────────────────────────────────────────────────────────────
+# ─── FastAPI App ──────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Fraud Detection API",
     description="Real-time fraud detection powered by ML. Part of the MLOps CI/CD Pipeline showcase.",
@@ -89,25 +117,30 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ─── Middleware ────────────────────────────────────────────────────────────────
-# 1. CORS (Added first to be the outermost layer, handling preflights before tracking)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ─── Middleware ───────────────────────────────────────────────────────────────
+# CORS — origins driven by env var so no code change is needed when adding a new frontend
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,https://ml-ops-automation.vercel.app",
+)
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "https://ml-ops-automation.vercel.app",
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 2. Metrics Tracking (Inner layer)
 @app.middleware("http")
 async def track_metrics(request: Request, call_next):
+    # Skip Prometheus tracking for uptime monitor pings
+    if request.url.path == "/ping":
+        return await call_next(request)
     ACTIVE_REQUESTS.inc()
     start_time = time.time()
     response = await call_next(request)
@@ -125,13 +158,19 @@ async def track_metrics(request: Request, call_next):
 # ─── Routes ───────────────────────────────────────────────────────────────────
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
-    """Health check endpoint for Kubernetes liveness/readiness probes."""
+    """Health check for Kubernetes liveness/readiness probes."""
     return HealthResponse(
         status="healthy",
         model_loaded=True,
         version=os.getenv("APP_VERSION", "1.0.0"),
         environment=os.getenv("ENVIRONMENT", "development"),
     )
+
+
+@app.get("/ping", tags=["Health"], include_in_schema=False)
+async def ping():
+    """Lightweight endpoint for UptimeRobot / external uptime monitors."""
+    return {"status": "ok"}
 
 
 @app.get("/metrics", tags=["Monitoring"])
@@ -141,34 +180,28 @@ async def metrics():
 
 
 @app.post("/predict", response_model=PredictionResponse, tags=["Inference"])
-async def predict_fraud(request: PredictionRequest):
-    """
-    Predict whether a transaction is fraudulent.
-
-    Returns fraud probability, risk level, and inference latency.
-    """
+@limiter.limit("60/minute")
+async def predict_fraud(request: Request, body: PredictionRequest):
+    """Predict whether a transaction is fraudulent."""
     try:
-        features = request.model_dump()
-        result = predict(features)
-
+        result = predict(body.model_dump())
         FRAUD_PREDICTIONS.labels(
             prediction="fraud" if result["is_fraud"] else "legit"
         ).inc()
-
         return PredictionResponse(**result)
-
     except FileNotFoundError as e:
-        raise HTTPException(status_code=503, detail=f"Model not loaded: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Model not loaded: {e}")
     except Exception as e:
-        logger.error(f"Prediction error: {e}")
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+        logger.error("Prediction error: %s", e)
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
 
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse, tags=["Inference"])
-async def predict_batch(request: BatchPredictionRequest):
-    """Run fraud predictions on a batch of transactions."""
+@limiter.limit("20/minute")
+async def predict_batch(request: Request, body: BatchPredictionRequest):
+    """Run fraud predictions on a batch of transactions (max 1000)."""
     try:
-        transactions = [t.model_dump() for t in request.transactions]
+        transactions = [t.model_dump() for t in body.transactions]
         results = batch_predict(transactions)
         return BatchPredictionResponse(
             results=results,
@@ -176,14 +209,31 @@ async def predict_batch(request: BatchPredictionRequest):
             fraud_count=sum(1 for r in results if r["is_fraud"]),
         )
     except Exception as e:
-        logger.error(f"Batch prediction error: {e}")
+        logger.error("Batch prediction error: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/feedback", response_model=FeedbackResponse, tags=["Feedback"])
+async def submit_feedback(body: FeedbackRequest):
+    """Record the actual outcome of a prediction to build a labelled feedback dataset."""
+    feedback_path = os.path.join(parent_dir, "models", "feedback.jsonl")
+    os.makedirs(os.path.dirname(feedback_path), exist_ok=True)
+    entry = {
+        "prediction_id": body.prediction_id,
+        "actual_label": body.actual_label,
+        "notes": body.notes,
+        "timestamp": time.time(),
+    }
+    with open(feedback_path, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+    logger.info("Feedback recorded for prediction %s", body.prediction_id)
+    return FeedbackResponse(success=True, message="Feedback recorded.")
 
 
 @app.get("/projects", tags=["Projects"])
 async def list_projects():
     """List all available MLOps projects."""
-    models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
+    models_dir = os.path.join(parent_dir, "models")
     projects = []
     if os.path.exists(models_dir):
         for item in os.listdir(models_dir):
@@ -192,40 +242,35 @@ async def list_projects():
                 metadata_path = os.path.join(item_path, "metadata.json")
                 name = item
                 if os.path.exists(metadata_path):
-                    with open(metadata_path, 'r') as f:
+                    with open(metadata_path, "r") as f:
                         try:
                             data = json.load(f)
                             name = data.get("model_name", item)
-                        except: pass
+                        except Exception:
+                            pass
                 projects.append({"id": item, "name": name})
-    
-    # Ensure fraud-detection looks like a project if it exists
     if not any(p["id"] == "fraud-detection" for p in projects):
         projects.insert(0, {"id": "fraud-detection", "name": "Demo - Fraud Detection"})
-        
     return projects
 
+
 @app.delete("/projects/{project_id}", tags=["Projects"])
-async def delete_project(project_id: str):
-    """Delete a project and its metadata."""
+async def delete_project(project_id: str, _: None = Depends(require_api_key)):
+    """Delete a project and its metadata. Requires X-API-Key header."""
     if project_id == "fraud-detection":
-        raise HTTPException(status_code=400, detail="Cannot delete the demo project")
-        
-    models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
+        raise HTTPException(status_code=400, detail="Cannot delete the demo project.")
+    models_dir = os.path.join(parent_dir, "models")
     project_path = os.path.join(models_dir, project_id)
-    
     if os.path.exists(project_path) and os.path.isdir(project_path):
         shutil.rmtree(project_path)
         return {"success": True, "message": f"Project {project_id} removed."}
-    
-    raise HTTPException(status_code=404, detail="Project not found")
+    raise HTTPException(status_code=404, detail="Project not found.")
+
 
 @app.get("/model/info", tags=["Model"])
 async def model_info(project_id: Optional[str] = None):
     """Return current model metadata."""
-    models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
-    
-    # Default to first project found or fraud-detection
+    models_dir = os.path.join(parent_dir, "models")
     if not project_id:
         if os.path.exists(models_dir):
             dirs = [d for d in os.listdir(models_dir) if os.path.isdir(os.path.join(models_dir, d))]
@@ -235,10 +280,9 @@ async def model_info(project_id: Optional[str] = None):
             project_id = "fraud-detection"
 
     metadata_path = os.path.join(models_dir, project_id, "metadata.json")
-    
     if os.path.exists(metadata_path):
         try:
-            with open(metadata_path, 'r') as f:
+            with open(metadata_path, "r") as f:
                 data = json.load(f)
                 return {
                     "model_name": data.get("model_name", "model"),
@@ -252,12 +296,12 @@ async def model_info(project_id: Optional[str] = None):
                     "last_push": data.get("last_push", "N/A"),
                     "mlflow_tracking_uri": os.getenv("MLFLOW_TRACKING_URI", "N/A"),
                     "history": data.get("history", []),
-                    "deployments": data.get("deployments", [])
+                    "deployments": data.get("deployments", []),
                 }
         except Exception as e:
-            logger.error(f"Error reading metadata.json for {project_id}: {e}")
+            logger.error("Error reading metadata for %s: %s", project_id, e)
 
-    # Fallback to hardcoded demo values if project not found
+    # Fallback demo values
     return {
         "model_name": "Demo - Fraud Detection",
         "version": os.getenv("MODEL_VERSION", "2.4.1"),
@@ -270,21 +314,21 @@ async def model_info(project_id: Optional[str] = None):
         "last_push": "2d ago",
         "mlflow_tracking_uri": os.getenv("MLFLOW_TRACKING_URI", "N/A"),
         "history": [
-            { "version": "v2.4.1", "stage": "Production", "accuracy": "93.2%", "f1": "0.911", "date": "2d ago", "runs": "run_88c2f" },
-            { "version": "v2.4.0", "stage": "Archived", "accuracy": "92.7%", "f1": "0.905", "date": "9d ago", "runs": "run_77b1e" }
+            {"version": "v2.4.1", "stage": "Production", "accuracy": "93.2%", "f1": "0.911", "date": "2d ago", "runs": "run_88c2f"},
+            {"version": "v2.4.0", "stage": "Archived", "accuracy": "92.7%", "f1": "0.905", "date": "9d ago", "runs": "run_77b1e"},
         ],
         "deployments": [
-            { "sha": "a3f7c91", "env": "prod", "status": "success", "time": "2m ago", "branch": "main", "triggered": "push" },
-            { "sha": "88be204", "env": "staging", "status": "success", "time": "47m ago", "branch": "develop", "triggered": "push" }
-        ]
+            {"sha": "a3f7c91", "env": "prod", "status": "success", "time": "2m ago", "branch": "main", "triggered": "push"},
+            {"sha": "88be204", "env": "staging", "status": "success", "time": "47m ago", "branch": "develop", "triggered": "push"},
+        ],
     }
 
 
 @app.post("/onboard", response_model=OnboardResponse, tags=["Onboarding"])
-async def onboard_repository(request: OnboardRequest):
+async def onboard_repository(request: OnboardRequest, _: None = Depends(require_api_key)):
     """
     Onboard a new repository by injecting the standardized MLOps workflow.
-    Requires a valid GITHUB_TOKEN in the environment.
+    Requires X-API-Key header and a valid GITHUB_TOKEN env var.
     """
     service = GithubOnboardingService()
     result = await service.onboard_repo(request.repo_url, request.image_name)
