@@ -69,6 +69,19 @@ def client(mock_load_model):
         yield c
 
 
+class TestRootEndpoint:
+    def test_root_get_returns_200(self, client):
+        response = client.get("/")
+        assert response.status_code == 200
+        data = response.json()
+        assert "status" in data
+        assert "message" in data
+
+    def test_root_head_returns_200(self, client):
+        response = client.head("/")
+        assert response.status_code == 200
+
+
 class TestHealthEndpoint:
     def test_health_returns_200(self, client):
         response = client.get("/health")

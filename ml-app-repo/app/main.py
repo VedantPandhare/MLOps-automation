@@ -139,7 +139,7 @@ app.add_middleware(
 @app.middleware("http")
 async def track_metrics(request: Request, call_next):
     # Skip Prometheus tracking for uptime monitor pings
-    if request.url.path == "/ping":
+    if request.url.path in ("/", "/ping"):
         return await call_next(request)
     ACTIVE_REQUESTS.inc()
     start_time = time.time()
@@ -156,6 +156,15 @@ async def track_metrics(request: Request, call_next):
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
+@app.get("/", tags=["Health"])
+async def root():
+    """Root endpoint returning service status."""
+    return {
+        "status": "active",
+        "message": "Fraud Detection API is running. Visit /docs for API documentation."
+    }
+
+
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
     """Health check for Kubernetes liveness/readiness probes."""
